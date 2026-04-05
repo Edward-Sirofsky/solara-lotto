@@ -289,30 +289,31 @@
     footer { text-align:center; padding:24px 16px; border-top:1px solid var(--border); font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--dim); letter-spacing:0.12em; position:relative; z-index:1; line-height:2; }
     footer a { color:var(--purple2); text-decoration:none; }
 
-    /* ── MWA LOADING OVERLAY ──────────────────────────── */
-    .mwa-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:2000; display:none; align-items:center; justify-content:center; flex-direction:column; gap:16px; }
-    .mwa-overlay.show { display:flex; }
-    .mwa-spinner { width:48px; height:48px; border:3px solid var(--border); border-top-color:var(--purple); border-radius:50%; animation:spin 0.8s linear infinite; }
-    @keyframes spin { to { transform:rotate(360deg); } }
-    .mwa-text { font-family:'Share Tech Mono',monospace; font-size:12px; color:var(--purple2); letter-spacing:0.15em; text-align:center; padding:0 24px; line-height:1.8; }
-
-    /* ── NO-WALLET MODAL ──────────────────────────────── */
+    /* ── WALLET SELECTION MODAL ───────────────────────── */
     .nowallet-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:1500; display:none; align-items:flex-end; justify-content:center; }
     @media(min-width:520px){ .nowallet-overlay { align-items:center; } }
     .nowallet-overlay.open { display:flex; }
     .nowallet-modal { background:var(--deep); border:1px solid var(--purple); width:100%; max-width:480px; padding:32px 24px calc(32px + var(--safe-bot)); position:relative; box-shadow:0 0 60px rgba(123,47,255,0.3); animation:modal-up 0.25s ease; max-height:92vh; overflow-y:auto; }
     @media(min-width:520px){ .nowallet-modal { clip-path:polygon(14px 0%,100% 0%,100% calc(100% - 14px),calc(100% - 14px) 100%,0% 100%,0% 14px); animation:modal-in 0.2s ease; padding-bottom:32px; } }
-    .nowallet-modal::before { content:'GET A WALLET'; position:absolute; top:-1px; left:24px; background:var(--purple); font-family:'Orbitron',monospace; font-size:8px; font-weight:700; letter-spacing:0.25em; color:white; padding:3px 10px; }
+    .nowallet-modal::before { content:'CONNECT'; position:absolute; top:-1px; left:24px; background:var(--purple); font-family:'Orbitron',monospace; font-size:8px; font-weight:700; letter-spacing:0.25em; color:white; padding:3px 10px; }
     .nowallet-title { font-family:'Orbitron',monospace; font-size:15px; font-weight:700; margin-bottom:6px; color:var(--white); }
-    .nowallet-sub { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--dim); margin-bottom:24px; line-height:1.6; }
-    .wallet-option { display:flex; align-items:center; gap:14px; padding:14px; border:1px solid var(--border); margin-bottom:8px; cursor:pointer; text-decoration:none; transition:border-color 0.2s, background 0.2s; }
-    .wallet-option:hover, .wallet-option:active { border-color:var(--purple); background:rgba(123,47,255,0.08); }
-    .wallet-option-icon { width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; background:rgba(255,255,255,0.06); }
-    .wallet-option-info { flex:1; }
-    .wallet-option-name { font-family:'Orbitron',monospace; font-size:12px; font-weight:700; color:var(--white); margin-bottom:3px; }
-    .wallet-option-desc { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--dim); line-height:1.5; }
-    .wallet-option-tag { font-family:'Orbitron',monospace; font-size:8px; font-weight:700; color:var(--purple2); background:rgba(123,47,255,0.15); padding:2px 7px; border:1px solid rgba(123,47,255,0.3); white-space:nowrap; align-self:flex-start; }
+    .nowallet-sub { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--dim); margin-bottom:20px; line-height:1.6; }
     .nowallet-close { position:absolute; top:10px; right:14px; background:none; border:none; color:var(--dim); font-size:22px; cursor:pointer; min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; }
+    /* Wallet option cards */
+    .wallet-card { border:1px solid var(--border); background:var(--panel); padding:18px 16px; margin-bottom:10px; position:relative; }
+    .wallet-card--featured { border-color:var(--purple); background:rgba(123,47,255,0.06); }
+    .wallet-card--featured::before { content:'RECOMMENDED'; position:absolute; top:-1px; left:14px; background:var(--purple); font-family:'Orbitron',monospace; font-size:7px; font-weight:700; letter-spacing:0.2em; color:white; padding:2px 8px; }
+    .wc-header { display:flex; align-items:center; gap:12px; margin-bottom:8px; margin-top:8px; }
+    .wallet-card--featured .wc-header { margin-top:14px; }
+    .wc-icon { font-size:22px; width:40px; height:40px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.06); border-radius:8px; flex-shrink:0; }
+    .wc-info { flex:1; }
+    .wc-name { font-family:'Orbitron',monospace; font-size:12px; font-weight:700; color:var(--white); margin-bottom:3px; }
+    .wc-tag { font-family:'Orbitron',monospace; font-size:8px; font-weight:700; color:var(--purple2); background:rgba(123,47,255,0.15); padding:2px 6px; border:1px solid rgba(123,47,255,0.3); display:inline-block; }
+    .wc-desc { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--dim); line-height:1.6; margin-bottom:14px; }
+    .wc-btn { width:100%; padding:14px; background:var(--purple); border:none; color:white; font-family:'Orbitron',monospace; font-size:10px; font-weight:700; letter-spacing:0.12em; cursor:pointer; clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%); transition:background 0.2s; min-height:48px; }
+    .wc-btn:hover, .wc-btn:active { background:var(--purple2); }
+    .wc-btn--outline { background:transparent; border:1px solid var(--border); color:var(--off); clip-path:none; }
+    .wc-btn--outline:hover, .wc-btn--outline:active { border-color:var(--purple); background:rgba(123,47,255,0.1); color:var(--white); }
   </style>
 </head>
 <body>
@@ -322,12 +323,6 @@
   <div class="corner corner--tr"></div>
   <div class="corner corner--bl"></div>
   <div class="corner corner--br"></div>
-
-  <!-- MWA LOADING OVERLAY -->
-  <div class="mwa-overlay" id="mwaOverlay">
-    <div class="mwa-spinner"></div>
-    <div class="mwa-text" id="mwaText">OPENING SEED VAULT<br/>Approve in your wallet...</div>
-  </div>
 
   <!-- HEADER -->
   <header>
@@ -523,48 +518,41 @@
     </div>
   </footer>
 
-  <!-- NO-WALLET MODAL -->
-  <div class="nowallet-overlay" id="noWalletModal">
+  <!-- WALLET SELECTION MODAL -->
+  <div class="nowallet-overlay" id="walletModal">
     <div class="nowallet-modal">
-      <button class="nowallet-close" onclick="closeNoWalletModal()">✕</button>
+      <button class="nowallet-close" onclick="closeWalletModal()">✕</button>
       <div class="nowallet-title">CONNECT A WALLET</div>
-      <div class="nowallet-sub" id="noWalletSub">Choose your wallet to enter the draw.</div>
+      <div class="nowallet-sub">Seed Vault is native to the Seeker phone. For all other devices, use any WalletConnect wallet.</div>
 
-      <!-- Seed Vault — shown on Android/Seeker only -->
-      <div id="seedVaultOption" style="display:none;">
-        <a class="wallet-option" href="#" onclick="trySeedVault(); return false;">
-          <div class="wallet-option-icon">◈</div>
-          <div class="wallet-option-info">
-            <div class="wallet-option-name">Seed Vault</div>
-            <div class="wallet-option-desc">Your Seeker's built-in hardware wallet.<br/>Most secure — biometric signing.</div>
+      <!-- Option 1: Seed Vault — Seeker native -->
+      <div class="wallet-card wallet-card--featured">
+        <div class="wc-header">
+          <div class="wc-icon">◈</div>
+          <div class="wc-info">
+            <div class="wc-name">Seed Vault Wallet</div>
+            <div class="wc-tag">SEEKER NATIVE</div>
           </div>
-          <div class="wallet-option-tag">RECOMMENDED</div>
-        </a>
+        </div>
+        <div class="wc-desc">Your Seeker's built-in hardware wallet. Install app from the Seeker dApp Store for automatic connection.</div>
+        <button class="wc-btn" onclick="trySeedVault()">CONNECT SEED VAULT</button>
       </div>
 
-      <!-- Phantom -->
-      <a class="wallet-option" href="https://phantom.app/download" target="_blank" rel="noopener" id="phantomOption">
-        <div class="wallet-option-icon">👻</div>
-        <div class="wallet-option-info">
-          <div class="wallet-option-name">Phantom</div>
-          <div class="wallet-option-desc" id="phantomDesc">Install the browser extension to connect on desktop.</div>
+      <!-- Option 2: Other wallets via AppKit / WalletConnect -->
+      <div class="wallet-card">
+        <div class="wc-header">
+          <div class="wc-icon">◎</div>
+          <div class="wc-info">
+            <div class="wc-name">Other Wallets</div>
+          </div>
         </div>
-        <div class="wallet-option-tag" id="phantomTag">INSTALL</div>
-      </a>
+        <div class="wc-desc">Phantom, Solflare, Backpack and more via WalletConnect.</div>
+        <button class="wc-btn wc-btn--outline" onclick="openAppKit()">CONNECT WALLET</button>
+      </div>
 
-      <!-- Backpack -->
-      <a class="wallet-option" href="https://www.backpack.app/" target="_blank" rel="noopener" id="backpackOption">
-        <div class="wallet-option-icon">🎒</div>
-        <div class="wallet-option-info">
-          <div class="wallet-option-name">Backpack</div>
-          <div class="wallet-option-desc" id="backpackDesc">xNFT wallet — desktop browser extension.</div>
-        </div>
-        <div class="wallet-option-tag" id="backpackTag">INSTALL</div>
-      </a>
-
-      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);margin-top:16px;line-height:1.8;letter-spacing:0.08em;">
-        ◈ On Seeker phone, Seed Vault opens automatically.<br/>
-        On desktop, install Phantom or Backpack browser extension.
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);margin-top:14px;line-height:1.8;letter-spacing:0.08em;">
+        ◈ On Seeker, Seed Vault connects automatically via the TWA.<br/>
+        On other devices, use any WalletConnect-compatible wallet.
       </div>
     </div>
   </div>
@@ -591,6 +579,48 @@
   </div>
 
   <div class="toast" id="toast"></div>
+
+  <!-- ── APPKIT — WalletConnect modal (Reown) ─────────────────────────── -->
+  <script type="module">
+    import { createAppKit }  from 'https://cdn.jsdelivr.net/npm/@reown/appkit@latest/dist/appkit.js';
+    import { SolanaAdapter } from 'https://cdn.jsdelivr.net/npm/@reown/appkit-adapter-solana@latest/dist/index.js';
+
+    // Solana mainnet CAIP-2 network descriptor (inline — no extra import needed)
+    const solana = {
+      id:               'solana:mainnet',
+      caipNetworkId:    'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+      chainNamespace:   'solana',
+      name:             'Solana',
+      nativeCurrency:   { name: 'Solana', symbol: 'SOL', decimals: 9 },
+      rpcUrls:          { default: { http: ['https://api.mainnet-beta.solana.com'] } },
+      blockExplorers:   { default: { name: 'Solscan', url: 'https://solscan.io' } },
+    };
+
+    const modal = createAppKit({
+      adapters:       [new SolanaAdapter()],
+      networks:       [solana],
+      defaultNetwork: solana,
+      projectId:      '6f267f7b-ff4b-4ba2-b38d-19cd01cf9332',
+      metadata: {
+        name:        'Solana Lotto',
+        description: 'Weekly on-chain lottery for the Solana ecosystem. Buy tickets with SOL or SKR.',
+        url:         'https://edward-sirofsky.github.io/solana-lotto',
+        icons:       ['https://edward-sirofsky.github.io/solana-lotto/icons/icon-192.png'],
+      },
+      features: { analytics: false, email: false, socials: false },
+      featuredWalletIds: [
+        'a797aa35c0fadbfc1a53e7f675162ed5226968b44a19ee3d24385c64d1d3c393', // Phantom
+        '0b415a746fb9ee99cce155c2ceca0c6f6061b1dbca2d722b3ba16381d0562150', // Solflare
+        '163d2cf19babf05eb8962e9748f9ebe613ed52ebf9c8107c9a0f104bfcf161b3', // Backpack
+      ],
+    });
+
+    // Expose modal to the main (non-module) script via window
+    window._appKit = modal;
+
+    // Forward account-state changes to the main script's handler
+    modal.subscribeAccount(acct => window._appKitAccountCb?.(acct));
+  </script>
 
   <script>
     // ═══════════════════════════════════════════════════════════
@@ -625,177 +655,162 @@
     };
 
     // ═══════════════════════════════════════════════════════════
-    // MOBILE WALLET ADAPTER (MWA) — Seed Vault support
-    // Uses the @solana-mobile/wallet-standard-mobile detection
-    // pattern. On Android, fires a solana-wallet:// intent which
-    // the Seed Vault / Phantom Mobile / any MWA wallet catches.
+    // WALLET STANDARD — Seed Vault TWA detection
+    // Bootstraps window['@wallet-standard/app'] and dispatches
+    // wallet-standard:app-ready so Seed Vault registers itself.
     // ═══════════════════════════════════════════════════════════
 
-    function isAndroid() {
-      return /Android/i.test(navigator.userAgent);
-    }
+    function isAndroid() { return /Android/i.test(navigator.userAgent); }
 
-    // ── Wallet Standard registry ─────────────────────────────────────────────
-    // Sets up window['@wallet-standard/app'] and dispatches the
-    // 'wallet-standard:app-ready' CustomEvent that Seed Vault (and any other
-    // Wallet Standard wallet) listens for inside a TWA.  The wallet calls
-    // registry.register(wallet) synchronously in response to that event.
     function initWalletStandard() {
       const KEY = '@wallet-standard/app';
       if (window[KEY]) return window[KEY];
-
-      const _wallets = [];
-      const _listeners = {};
-
+      const _w = [], _l = {};
       window[KEY] = {
-        register(...newWallets) {
-          _wallets.push(...newWallets);
-          (_listeners['register'] || []).forEach(fn => fn(_wallets));
-          return function unregister() {
-            newWallets.forEach(w => { const i = _wallets.indexOf(w); if (i >= 0) _wallets.splice(i, 1); });
-          };
+        register(...ws) {
+          _w.push(...ws);
+          (_l['register']||[]).forEach(fn => fn(_w));
+          return () => ws.forEach(w => { const i=_w.indexOf(w); if(i>=0) _w.splice(i,1); });
         },
-        get() { return _wallets.slice(); },
-        on(event, fn) {
-          if (!_listeners[event]) _listeners[event] = [];
-          _listeners[event].push(fn);
-          return function off() {
-            const i = _listeners[event].indexOf(fn);
-            if (i >= 0) _listeners[event].splice(i, 1);
-          };
+        get() { return _w.slice(); },
+        on(ev, fn) {
+          if (!_l[ev]) _l[ev]=[];
+          _l[ev].push(fn);
+          return () => { const i=_l[ev].indexOf(fn); if(i>=0) _l[ev].splice(i,1); };
         }
       };
-
-      // Notify wallets that the app is ready — Seed Vault registers here
       window.dispatchEvent(new CustomEvent('wallet-standard:app-ready', { detail: window[KEY] }));
       return window[KEY];
     }
 
-    // ── Connect via Wallet Standard (Seed Vault in TWA) ──────────────────────
-    async function connectMWA() {
-      showMWAOverlay('CONNECTING TO SEED VAULT\nApprove in your wallet...');
-
+    // Attempt Seed Vault connection via Wallet Standard.
+    // Resolves with the base-58 address or rejects with 'no_wallet_standard'.
+    function connectSeedVault() {
       return new Promise((resolve, reject) => {
-        const registry = initWalletStandard();
+        const reg = initWalletStandard();
 
         function doConnect() {
-          const available = registry.get();
-          // Find a Solana-compatible wallet (Seed Vault exposes solana:mainnet chain)
-          const wallet = available.find(w =>
+          const avail = reg.get();
+          const wallet = avail.find(w =>
             Array.isArray(w.chains) && w.chains.some(c => c.startsWith('solana:')) &&
-            w.features && w.features['standard:connect']
-          ) || available[0];
-
-          if (!wallet || !wallet.features?.['standard:connect']) {
-            hideMWAOverlay();
-            reject(new Error('no_wallet_standard'));
-            return;
-          }
-
+            w.features?.['standard:connect']
+          ) || avail[0];
+          if (!wallet?.features?.['standard:connect']) { reject(new Error('no_wallet_standard')); return; }
           wallet.features['standard:connect'].connect({ silent: false })
-            .then(result => {
-              hideMWAOverlay();
-              const addr = result.accounts?.[0]?.address;
-              if (addr) resolve({ address: addr, type: 'mwa' });
-              else reject(new Error('No account returned'));
+            .then(r => {
+              const addr = r.accounts?.[0]?.address;
+              if (addr) resolve(addr); else reject(new Error('No account returned'));
             })
-            .catch(e => { hideMWAOverlay(); reject(e); });
+            .catch(reject);
         }
 
-        // If wallets are already registered (e.g. Phantom also implements WS), connect now
-        if (registry.get().length > 0) { doConnect(); return; }
-
-        // Otherwise wait — Seed Vault registers synchronously or within a few ms
-        // after the app-ready event is dispatched.  Give it 3 s before giving up.
-        const timer = setTimeout(() => {
-          offFn();
-          hideMWAOverlay();
-          reject(new Error('no_wallet_standard'));
-        }, 3000);
-
-        const offFn = registry.on('register', () => {
-          clearTimeout(timer);
-          offFn();
-          doConnect();
-        });
+        if (reg.get().length > 0) { doConnect(); return; }
+        // Seed Vault registers synchronously on app-ready; give it 3 s
+        const timer = setTimeout(() => { off(); reject(new Error('no_wallet_standard')); }, 3000);
+        const off   = reg.on('register', () => { clearTimeout(timer); off(); doConnect(); });
       });
     }
 
-    function showMWAOverlay(msg) {
-      document.getElementById('mwaText').innerHTML = msg.replace('\n','<br/>');
-      document.getElementById('mwaOverlay').classList.add('show');
+    // ═══════════════════════════════════════════════════════════
+    // APPKIT ACCOUNT SUBSCRIPTION
+    // Receives connect / disconnect events forwarded from the
+    // module script above via window._appKitAccountCb.
+    // ═══════════════════════════════════════════════════════════
+    window._appKitAccountCb = function(acct) {
+      if (acct.isConnected && acct.address && !state.walletAddress) {
+        onWalletConnected(acct.address, 'appkit');
+      } else if (!acct.isConnected && state.walletType === 'appkit') {
+        disconnectWallet();
+      }
+    };
+
+    // ═══════════════════════════════════════════════════════════
+    // WALLET UI HELPERS
+    // ═══════════════════════════════════════════════════════════
+    function onWalletConnected(address, type) {
+      state.walletAddress = address;
+      state.walletType    = type;
+      const short = address.slice(0,4) + '...' + address.slice(-4);
+      const btn = document.getElementById('connectBtn');
+      btn.textContent = short;
+      btn.classList.add('connected');
+      btn.disabled = false;
+      document.getElementById('walletMsg').style.display = 'none';
+      const bar = document.getElementById('walletBar');
+      bar.textContent = `◈ ${type === 'seed-vault' ? 'SEED VAULT' : 'CONNECTED'} · ${short}`;
+      bar.classList.add('show');
+      showToast(`Connected: ${short}`, 'success');
     }
-    function hideMWAOverlay() {
-      document.getElementById('mwaOverlay').classList.remove('show');
+
+    function disconnectWallet() {
+      state.walletAddress = null;
+      state.walletType    = null;
+      state.myTickets     = [];
+      const btn = document.getElementById('connectBtn');
+      btn.textContent = 'CONNECT';
+      btn.classList.remove('connected');
+      btn.disabled = false;
+      document.getElementById('walletMsg').style.display = 'block';
+      document.getElementById('walletBar').classList.remove('show');
+      updatePool();
+      showToast('Wallet disconnected', 'info');
     }
 
     // ═══════════════════════════════════════════════════════════
-    // WALLET CONNECTION — Seed Vault first, then fallbacks
+    // CONNECT FLOW
     // ═══════════════════════════════════════════════════════════
     async function handleConnect() {
-      const btn = document.getElementById('connectBtn');
-
-      // DISCONNECT
       if (state.walletAddress) {
-        state.walletAddress = null;
-        state.walletType = null;
-        state.myTickets = [];
-        btn.textContent = 'CONNECT';
-        btn.classList.remove('connected');
-        btn.disabled = false;
-        document.getElementById('walletMsg').style.display = 'block';
-        document.getElementById('walletBar').classList.remove('show');
-        showToast('Wallet disconnected', 'info');
+        if (state.walletType === 'appkit') window._appKit?.disconnect();
+        disconnectWallet();
         return;
       }
 
-      btn.textContent = 'CONNECTING...';
-      btn.disabled = true;
-
-      try {
-        let result = null;
-
-        // ── 1. Wallet Standard (Seed Vault TWA) — highest priority on Android ──
-        if (isAndroid()) {
-          try {
-            result = await connectMWA();
-          } catch(e) {
-            if (e.message !== 'no_wallet_standard') throw e; // real rejection, surface it
-            // else: not in TWA / Seed Vault not present → fall through
-          }
-        }
-
-        // ── 2. Injected wallets (Phantom ext, Phantom in-app browser, Backpack) ──
-        if (!result) {
-          const provider = window.phantom?.solana || window.backpack?.solana || window.solana;
-          if (provider) {
-            const resp = await provider.connect();
-            result = {
-              address: resp.publicKey.toString(),
-              type: provider === window.phantom?.solana ? 'phantom'
-                  : provider === window.backpack?.solana ? 'backpack'
-                  : 'injected'
-            };
-          }
-        }
-
-        // ── 3. No wallet found — show options modal ───────────────────────────
-        if (!result) {
-          showNoWalletModal();
+      if (isAndroid()) {
+        // Android: try Seed Vault (TWA) first, fall back to the two-option modal
+        const btn = document.getElementById('connectBtn');
+        btn.textContent = 'CONNECTING...';
+        btn.disabled = true;
+        try {
+          const addr = await connectSeedVault();
+          onWalletConnected(addr, 'seed-vault');
+        } catch(e) {
           btn.textContent = 'CONNECT';
           btn.disabled = false;
-          return;
+          if (e.message === 'no_wallet_standard') {
+            showWalletModal();
+          } else {
+            showToast('Connection rejected', 'error');
+          }
         }
+      } else {
+        // Desktop / non-Android: open AppKit directly
+        openAppKit();
+      }
+    }
 
-        // ── Connected ────────────────────────────────────────
-        onWalletConnected(result.address, result.type);
+    function openAppKit()      { closeWalletModal(); window._appKit?.open(); }
+    function showWalletModal() { document.getElementById('walletModal').classList.add('open'); }
+    function closeWalletModal(){ document.getElementById('walletModal').classList.remove('open'); }
 
+    async function trySeedVault() {
+      closeWalletModal();
+      const btn = document.getElementById('connectBtn');
+      btn.textContent = 'CONNECTING...';
+      btn.disabled = true;
+      try {
+        const addr = await connectSeedVault();
+        onWalletConnected(addr, 'seed-vault');
       } catch(e) {
         btn.textContent = 'CONNECT';
         btn.disabled = false;
-        showToast(e.message === 'Wallet connection timed out' ? 'Wallet timed out — try again' : 'Connection rejected', 'error');
+        showToast('Seed Vault not found — make sure this is the Seeker TWA', 'error');
       }
     }
+
+    document.getElementById('walletModal').addEventListener('click', function(e) {
+      if (e.target === this) closeWalletModal();
+    });
 
     // ═══════════════════════════════════════════════════════════
     // PRICES — Jupiter API
