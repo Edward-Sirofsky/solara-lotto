@@ -536,6 +536,7 @@
         <div class="wallet-option-info">
           <div class="wallet-option-name">Seed Vault</div>
           <div class="wallet-option-desc">Seeker's built-in hardware wallet.<br/>Install from the dApp Store for automatic connection.</div>
+          <div style="font-size:9px;color:var(--dim);margin-top:4px;letter-spacing:0.06em;">Available after installing from the Solana dApp Store</div>
         </div>
         <div class="wallet-option-tag">SEEKER NATIVE</div>
       </a>
@@ -550,12 +551,12 @@
         <div class="wallet-option-tag">RECOMMENDED</div>
       </a>
 
-      <!-- WalletConnect -->
+      <!-- Open in Wallet Browser -->
       <a class="wallet-option" href="#" onclick="openWalletConnect(); return false;">
         <div class="wallet-option-icon">⚡</div>
         <div class="wallet-option-info">
-          <div class="wallet-option-name">WalletConnect</div>
-          <div class="wallet-option-desc">Connect any Solana wallet by scanning a QR code.</div>
+          <div class="wallet-option-name">Open in Wallet Browser</div>
+          <div class="wallet-option-desc">Opens the app inside a WalletConnect-compatible wallet browser.</div>
         </div>
         <div class="wallet-option-tag">ALL WALLETS</div>
       </a>
@@ -912,12 +913,12 @@
     }
     document.getElementById('noWalletModal').addEventListener('click', function(e){
       if(e.target === this) closeNoWalletModal();
+    });
     function trySolflare() {
       closeNoWalletModal();
       const isAndroid = /Android/i.test(navigator.userAgent);
       if (isAndroid) {
-        const url = encodeURIComponent(CONFIG.APP_URI);
-        window.location.href = 'https://solflare.com/ul/v1/browse/' + url + '?ref=' + url;
+        window.location.href = 'https://solflare.com/ul/v1/browse/https%3A%2F%2Fedward-sirofsky.github.io%2Fsolana-lotto%2F';
       } else {
         const provider = window.solflare;
         if (provider) {
@@ -942,10 +943,8 @@
     }
     function openWalletConnect() {
       closeNoWalletModal();
-      window.open('https://walletconnect.com/explorer?type=wallet&chains=solana%3A4sGjMW1sUnHzSxGspuhpqLDx6wiyjNtZ', '_blank');
-      showToast('Opening WalletConnect wallet selector...', 'info');
+      window.location.href = 'https://link.trustwallet.com/open_url?coin_id=501&url=https%3A%2F%2Fedward-sirofsky.github.io%2Fsolana-lotto%2F';
     }
-    });
 
     async function confirmPurchase(){
       const btn = document.getElementById('modalConfirmBtn');
