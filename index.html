@@ -1003,7 +1003,7 @@
     // ═══════════════════════════════════════════════════════════
     if('serviceWorker' in navigator){
       window.addEventListener('load',()=>{
-        navigator.serviceWorker.register('/solana-lotto/sw.js',{scope:'/solana-lotto/'})
+        navigator.serviceWorker.register('/solana-lotto/sw.js',{scope:'/solana-lotto/',updateViaCache:'none'})
           .catch(e=>console.log('SW reg failed:',e));
       });
     }

@@ -1,7 +1,7 @@
 // Solana Lotto — Service Worker
 // Caches the shell for offline/fast load, always fetches fresh content
 
-const CACHE = 'solana-lotto-v1';
+const CACHE = 'solana-lotto-v3';
 const SHELL = [
   '/solana-lotto/',
   '/solana-lotto/index.html',
