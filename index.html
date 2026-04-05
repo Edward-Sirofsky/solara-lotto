@@ -528,43 +528,41 @@
     <div class="nowallet-modal">
       <button class="nowallet-close" onclick="closeNoWalletModal()">✕</button>
       <div class="nowallet-title">CONNECT A WALLET</div>
-      <div class="nowallet-sub" id="noWalletSub">Choose your wallet to enter the draw.</div>
+      <div class="nowallet-sub">Choose how to connect to Solana Lotto.</div>
 
-      <!-- Seed Vault — shown on Android/Seeker only -->
-      <div id="seedVaultOption" style="display:none;">
-        <a class="wallet-option" href="#" onclick="trySeedVault(); return false;">
-          <div class="wallet-option-icon">◈</div>
-          <div class="wallet-option-info">
-            <div class="wallet-option-name">Seed Vault</div>
-            <div class="wallet-option-desc">Your Seeker's built-in hardware wallet.<br/>Most secure — biometric signing.</div>
-          </div>
-          <div class="wallet-option-tag">RECOMMENDED</div>
-        </a>
-      </div>
-
-      <!-- Phantom -->
-      <a class="wallet-option" href="https://phantom.app/download" target="_blank" rel="noopener" id="phantomOption">
-        <div class="wallet-option-icon">👻</div>
+      <!-- Seed Vault — Seeker native -->
+      <a class="wallet-option" href="#" onclick="trySeedVault(); return false;">
+        <div class="wallet-option-icon">◈</div>
         <div class="wallet-option-info">
-          <div class="wallet-option-name">Phantom</div>
-          <div class="wallet-option-desc" id="phantomDesc">Install the browser extension to connect on desktop.</div>
+          <div class="wallet-option-name">Seed Vault</div>
+          <div class="wallet-option-desc">Seeker's built-in hardware wallet.<br/>Install from the dApp Store for automatic connection.</div>
         </div>
-        <div class="wallet-option-tag" id="phantomTag">INSTALL</div>
+        <div class="wallet-option-tag">SEEKER NATIVE</div>
       </a>
 
-      <!-- Backpack -->
-      <a class="wallet-option" href="https://www.backpack.app/" target="_blank" rel="noopener">
-        <div class="wallet-option-icon">🎒</div>
+      <!-- Solflare -->
+      <a class="wallet-option" href="#" onclick="trySolflare(); return false;">
+        <div class="wallet-option-icon">🔥</div>
         <div class="wallet-option-info">
-          <div class="wallet-option-name">Backpack</div>
-          <div class="wallet-option-desc">xNFT wallet — desktop browser extension.</div>
+          <div class="wallet-option-name">Solflare</div>
+          <div class="wallet-option-desc">Mobile & desktop Solana wallet.<br/>Powers the Seed Vault on Seeker.</div>
         </div>
-        <div class="wallet-option-tag">INSTALL</div>
+        <div class="wallet-option-tag">RECOMMENDED</div>
+      </a>
+
+      <!-- WalletConnect -->
+      <a class="wallet-option" href="#" onclick="openWalletConnect(); return false;">
+        <div class="wallet-option-icon">⚡</div>
+        <div class="wallet-option-info">
+          <div class="wallet-option-name">WalletConnect</div>
+          <div class="wallet-option-desc">Connect any Solana wallet by scanning a QR code.</div>
+        </div>
+        <div class="wallet-option-tag">ALL WALLETS</div>
       </a>
 
       <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);margin-top:16px;line-height:1.8;letter-spacing:0.08em;">
-        ◈ On Seeker phone, Seed Vault opens automatically.<br/>
-        On desktop, install Phantom or Backpack browser extension.
+        ◈ On Seeker: install from the Solana dApp Store for Seed Vault auto-connect.<br/>
+        On desktop: use Solflare browser extension or WalletConnect.
       </div>
     </div>
   </div>
@@ -913,6 +911,39 @@
     }
     document.getElementById('noWalletModal').addEventListener('click', function(e){
       if(e.target === this) closeNoWalletModal();
+    function trySolflare() {
+      closeNoWalletModal();
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      if (isAndroid) {
+        const url = encodeURIComponent(CONFIG.APP_URI);
+        window.location.href = 'https://solflare.com/ul/v1/browse/' + url + '?ref=' + url;
+      } else {
+        const provider = window.solflare;
+        if (provider) {
+          provider.connect().then(resp => {
+            state.walletAddress = resp.publicKey.toString();
+            const short = state.walletAddress.slice(0,4) + '...' + state.walletAddress.slice(-4);
+            const btn = document.getElementById('connectBtn');
+            btn.textContent = short;
+            btn.classList.add('connected');
+            btn.disabled = false;
+            document.getElementById('walletMsg').style.display = 'none';
+            const bar = document.getElementById('walletBar');
+            bar.textContent = '◈ SOLFLARE · ' + short;
+            bar.classList.add('show');
+            showToast('Solflare connected: ' + short, 'success');
+          }).catch(() => showToast('Solflare connection rejected', 'error'));
+        } else {
+          window.open('https://solflare.com', '_blank');
+          showToast('Install Solflare extension then try again', 'info');
+        }
+      }
+    }
+    function openWalletConnect() {
+      closeNoWalletModal();
+      window.open('https://walletconnect.com/explorer?type=wallet&chains=solana%3A4sGjMW1sUnHzSxGspuhpqLDx6wiyjNtZ', '_blank');
+      showToast('Opening WalletConnect wallet selector...', 'info');
+    }
     });
 
     async function confirmPurchase(){
