@@ -553,13 +553,13 @@
       </a>
 
       <!-- Backpack -->
-      <a class="wallet-option" href="https://www.backpack.app/" target="_blank" rel="noopener">
+      <a class="wallet-option" href="https://www.backpack.app/" target="_blank" rel="noopener" id="backpackOption">
         <div class="wallet-option-icon">🎒</div>
         <div class="wallet-option-info">
           <div class="wallet-option-name">Backpack</div>
-          <div class="wallet-option-desc">xNFT wallet — desktop browser extension.</div>
+          <div class="wallet-option-desc" id="backpackDesc">xNFT wallet — desktop browser extension.</div>
         </div>
-        <div class="wallet-option-tag">INSTALL</div>
+        <div class="wallet-option-tag" id="backpackTag">INSTALL</div>
       </a>
 
       <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);margin-top:16px;line-height:1.8;letter-spacing:0.08em;">
@@ -631,39 +631,93 @@
     // the Seed Vault / Phantom Mobile / any MWA wallet catches.
     // ═══════════════════════════════════════════════════════════
 
-    function isMWAAvailable() {
-      // We're inside a TWA on Android, OR browser on Android
-      return state.isMobile && /Android/i.test(navigator.userAgent);
+    function isAndroid() {
+      return /Android/i.test(navigator.userAgent);
     }
 
+    // ── Wallet Standard registry ─────────────────────────────────────────────
+    // Sets up window['@wallet-standard/app'] and dispatches the
+    // 'wallet-standard:app-ready' CustomEvent that Seed Vault (and any other
+    // Wallet Standard wallet) listens for inside a TWA.  The wallet calls
+    // registry.register(wallet) synchronously in response to that event.
+    function initWalletStandard() {
+      const KEY = '@wallet-standard/app';
+      if (window[KEY]) return window[KEY];
+
+      const _wallets = [];
+      const _listeners = {};
+
+      window[KEY] = {
+        register(...newWallets) {
+          _wallets.push(...newWallets);
+          (_listeners['register'] || []).forEach(fn => fn(_wallets));
+          return function unregister() {
+            newWallets.forEach(w => { const i = _wallets.indexOf(w); if (i >= 0) _wallets.splice(i, 1); });
+          };
+        },
+        get() { return _wallets.slice(); },
+        on(event, fn) {
+          if (!_listeners[event]) _listeners[event] = [];
+          _listeners[event].push(fn);
+          return function off() {
+            const i = _listeners[event].indexOf(fn);
+            if (i >= 0) _listeners[event].splice(i, 1);
+          };
+        }
+      };
+
+      // Notify wallets that the app is ready — Seed Vault registers here
+      window.dispatchEvent(new CustomEvent('wallet-standard:app-ready', { detail: window[KEY] }));
+      return window[KEY];
+    }
+
+    // ── Connect via Wallet Standard (Seed Vault in TWA) ──────────────────────
     async function connectMWA() {
-      // Try Wallet Standard API — Seed Vault injects window.navigator.wallets in TWA
-      // and some implementations also inject window.wallets.
-      showMWAOverlay('CONNECTING TO WALLET\nApprove in your wallet...');
+      showMWAOverlay('CONNECTING TO SEED VAULT\nApprove in your wallet...');
 
       return new Promise((resolve, reject) => {
-        const walletStore = window.navigator?.wallets ?? window.wallets;
-        if (walletStore) {
-          try {
-            const available = walletStore.get();
-            if (available && available.length > 0) {
-              const wallet = available[0]; // Seed Vault is first in TWA context
-              wallet.features['standard:connect']
-                .connect({ silent: false })
-                .then(result => {
-                  hideMWAOverlay();
-                  const addr = result.accounts?.[0]?.address;
-                  if (addr) resolve({ address: addr, type: 'mwa' });
-                  else reject(new Error('No account returned'));
-                })
-                .catch(e => { hideMWAOverlay(); reject(e); });
-              return;
-            }
-          } catch(e) { console.log('Wallet Standard error:', e); }
+        const registry = initWalletStandard();
+
+        function doConnect() {
+          const available = registry.get();
+          // Find a Solana-compatible wallet (Seed Vault exposes solana:mainnet chain)
+          const wallet = available.find(w =>
+            Array.isArray(w.chains) && w.chains.some(c => c.startsWith('solana:')) &&
+            w.features && w.features['standard:connect']
+          ) || available[0];
+
+          if (!wallet || !wallet.features?.['standard:connect']) {
+            hideMWAOverlay();
+            reject(new Error('no_wallet_standard'));
+            return;
+          }
+
+          wallet.features['standard:connect'].connect({ silent: false })
+            .then(result => {
+              hideMWAOverlay();
+              const addr = result.accounts?.[0]?.address;
+              if (addr) resolve({ address: addr, type: 'mwa' });
+              else reject(new Error('No account returned'));
+            })
+            .catch(e => { hideMWAOverlay(); reject(e); });
         }
-        // No Wallet Standard found — caller will show the no-wallet modal
-        hideMWAOverlay();
-        reject(new Error('no_wallet_standard'));
+
+        // If wallets are already registered (e.g. Phantom also implements WS), connect now
+        if (registry.get().length > 0) { doConnect(); return; }
+
+        // Otherwise wait — Seed Vault registers synchronously or within a few ms
+        // after the app-ready event is dispatched.  Give it 3 s before giving up.
+        const timer = setTimeout(() => {
+          offFn();
+          hideMWAOverlay();
+          reject(new Error('no_wallet_standard'));
+        }, 3000);
+
+        const offFn = registry.on('register', () => {
+          clearTimeout(timer);
+          offFn();
+          doConnect();
+        });
       });
     }
 
@@ -701,34 +755,31 @@
       try {
         let result = null;
 
-        // ── 1. Try injected wallets (Phantom ext / Phantom mobile browser / Backpack) ──
-        const provider = window.phantom?.solana || window.backpack?.solana;
-        if (provider) {
-          const resp = await provider.connect();
-          result = {
-            address: resp.publicKey.toString(),
-            type: provider === window.phantom?.solana ? 'phantom' : 'backpack'
-          };
-        }
-
-        // ── 2. Try Wallet Standard / MWA (Seed Vault in TWA on Seeker) ──────
-        if (!result && isMWAAvailable()) {
+        // ── 1. Wallet Standard (Seed Vault TWA) — highest priority on Android ──
+        if (isAndroid()) {
           try {
             result = await connectMWA();
           } catch(e) {
-            console.log('Wallet Standard/MWA failed:', e.message);
+            if (e.message !== 'no_wallet_standard') throw e; // real rejection, surface it
+            // else: not in TWA / Seed Vault not present → fall through
           }
         }
 
-        // ── 3. Legacy window.solana fallback ─────────────────────────────────
-        if (!result && window.solana) {
-          try {
-            const resp = await window.solana.connect();
-            result = { address: resp.publicKey.toString(), type: 'injected' };
-          } catch(e) { console.log('Legacy solana failed:', e.message); }
+        // ── 2. Injected wallets (Phantom ext, Phantom in-app browser, Backpack) ──
+        if (!result) {
+          const provider = window.phantom?.solana || window.backpack?.solana || window.solana;
+          if (provider) {
+            const resp = await provider.connect();
+            result = {
+              address: resp.publicKey.toString(),
+              type: provider === window.phantom?.solana ? 'phantom'
+                  : provider === window.backpack?.solana ? 'backpack'
+                  : 'injected'
+            };
+          }
         }
 
-        // ── 4. No wallet found — show options modal ───────────────────────────
+        // ── 3. No wallet found — show options modal ───────────────────────────
         if (!result) {
           showNoWalletModal();
           btn.textContent = 'CONNECT';
@@ -737,20 +788,7 @@
         }
 
         // ── Connected ────────────────────────────────────────
-        state.walletAddress = result.address;
-        state.walletType    = result.type;
-        const short = result.address.slice(0,4) + '...' + result.address.slice(-4);
-        btn.textContent = short;
-        btn.classList.add('connected');
-        btn.disabled = false;
-        document.getElementById('walletMsg').style.display = 'none';
-
-        // Show wallet bar on mobile
-        const bar = document.getElementById('walletBar');
-        bar.textContent = `◈ ${result.type === 'mwa' ? 'SEED VAULT' : result.type.toUpperCase()} · ${short}`;
-        bar.classList.add('show');
-
-        showToast(`Connected: ${short}`, 'success');
+        onWalletConnected(result.address, result.type);
 
       } catch(e) {
         btn.textContent = 'CONNECT';
@@ -861,27 +899,79 @@
 
     // ── NO-WALLET MODAL ──────────────────────────────────────
     function showNoWalletModal() {
-      const isAndroid = /Android/i.test(navigator.userAgent);
-      // Show Seed Vault option only on Android
-      document.getElementById('seedVaultOption').style.display = isAndroid ? 'block' : 'none';
-      // Update Phantom copy based on platform
-      if (isAndroid) {
-        document.getElementById('phantomDesc').textContent = 'Open this app inside Phantom\'s browser to connect instantly.';
+      const android = isAndroid();
+      // Seed Vault option only shown on Android
+      document.getElementById('seedVaultOption').style.display = android ? 'block' : 'none';
+
+      if (android) {
+        // ── Phantom Mobile: deep link into Phantom's in-app browser ──────────
+        // https://phantom.app/ul/v1/browse/<encoded-url>?ref=<encoded-ref>
+        document.getElementById('phantomDesc').textContent = 'Open inside Phantom\'s browser — window.phantom.solana connects automatically.';
         document.getElementById('phantomTag').textContent  = 'OPEN';
         document.getElementById('phantomOption').href      =
-          'https://phantom.app/ul/browse/' + encodeURIComponent(CONFIG.APP_URI) +
+          'https://phantom.app/ul/v1/browse/' +
+          encodeURIComponent(CONFIG.APP_URI) +
           '?ref=' + encodeURIComponent(CONFIG.APP_URI);
-        document.getElementById('noWalletSub').textContent = 'No wallet detected. Use Seed Vault (Seeker) or open via Phantom.';
+        document.getElementById('phantomOption').onclick   = null; // plain href, no JS override
+
+        // ── Backpack Mobile: connect if injected, else deep link ─────────────
+        if (window.backpack?.solana) {
+          document.getElementById('backpackDesc').textContent = 'Tap to connect your Backpack wallet.';
+          document.getElementById('backpackTag').textContent  = 'CONNECT';
+          document.getElementById('backpackOption').href      = '#';
+          document.getElementById('backpackOption').onclick   = function(e) {
+            e.preventDefault();
+            closeNoWalletModal();
+            window.backpack.solana.connect().then(resp => {
+              onWalletConnected(resp.publicKey.toString(), 'backpack');
+            }).catch(err => showToast('Backpack rejected connection', 'error'));
+          };
+        } else {
+          document.getElementById('backpackDesc').textContent = 'Open inside Backpack\'s browser to connect.';
+          document.getElementById('backpackTag').textContent  = 'OPEN';
+          document.getElementById('backpackOption').href      =
+            'https://backpack.app/ul/v1/browse/' +
+            encodeURIComponent(CONFIG.APP_URI) +
+            '?ref=' + encodeURIComponent(CONFIG.APP_URI);
+          document.getElementById('backpackOption').onclick   = null;
+        }
+
+        document.getElementById('noWalletSub').textContent = 'Use Seed Vault (Seeker) or open via Phantom / Backpack.';
       } else {
+        // Desktop
         document.getElementById('phantomDesc').textContent = 'Install the browser extension, then click Connect again.';
         document.getElementById('phantomTag').textContent  = 'INSTALL';
-        document.getElementById('noWalletSub').textContent = 'No wallet detected. Install one below then tap Connect again.';
+        document.getElementById('phantomOption').href      = 'https://phantom.app/download';
+        document.getElementById('phantomOption').onclick   = null;
+        document.getElementById('backpackDesc').textContent = 'xNFT wallet — desktop browser extension.';
+        document.getElementById('backpackTag').textContent  = 'INSTALL';
+        document.getElementById('backpackOption').href      = 'https://www.backpack.app/';
+        document.getElementById('backpackOption').onclick   = null;
+        document.getElementById('noWalletSub').textContent = 'No wallet detected. Install one below then click Connect again.';
       }
       document.getElementById('noWalletModal').classList.add('open');
     }
     function closeNoWalletModal() {
       document.getElementById('noWalletModal').classList.remove('open');
     }
+
+    // Shared helper — called after any successful connect
+    function onWalletConnected(address, type) {
+      state.walletAddress = address;
+      state.walletType    = type;
+      const short = address.slice(0,4) + '...' + address.slice(-4);
+      const btn = document.getElementById('connectBtn');
+      btn.textContent = short;
+      btn.classList.add('connected');
+      btn.disabled = false;
+      document.getElementById('walletMsg').style.display = 'none';
+      const bar = document.getElementById('walletBar');
+      const label = type === 'mwa' ? 'SEED VAULT' : type.toUpperCase();
+      bar.textContent = `◈ ${label} · ${short}`;
+      bar.classList.add('show');
+      showToast(`Connected: ${short}`, 'success');
+    }
+
     async function trySeedVault() {
       closeNoWalletModal();
       const btn = document.getElementById('connectBtn');
@@ -889,21 +979,11 @@
       btn.disabled = true;
       try {
         const result = await connectMWA();
-        state.walletAddress = result.address;
-        state.walletType    = result.type;
-        const short = result.address.slice(0,4) + '...' + result.address.slice(-4);
-        btn.textContent = short;
-        btn.classList.add('connected');
-        btn.disabled = false;
-        document.getElementById('walletMsg').style.display = 'none';
-        const bar = document.getElementById('walletBar');
-        bar.textContent = `◈ SEED VAULT · ${short}`;
-        bar.classList.add('show');
-        showToast(`Connected: ${short}`, 'success');
+        onWalletConnected(result.address, result.type);
       } catch(e) {
         btn.textContent = 'CONNECT';
         btn.disabled = false;
-        showToast('Seed Vault not detected — open as TWA or try Phantom', 'error');
+        showToast('Seed Vault not found — make sure this is the installed TWA', 'error');
       }
     }
     document.getElementById('noWalletModal').addEventListener('click', function(e){

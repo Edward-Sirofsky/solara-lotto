@@ -3,9 +3,9 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "news.blockdesk.solanalotto",
+      "package_name": "com.solanalotto.app",
       "sha256_cert_fingerprints": [
-        "REPLACE_WITH_YOUR_APK_SHA256_FINGERPRINT_AFTER_BUBBLEWRAP_BUILD"
+        "B8:FB:89:E5:9E:97:13:E8:DE:88:3B:23:42:62:04:D7:2C:4E:DE:6C:E9:2E:5E:D6:72:8A:B4:6C:01:E4:25:42"
       ]
     }
   }
