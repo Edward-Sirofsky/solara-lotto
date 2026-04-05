@@ -764,11 +764,16 @@
     // ═══════════════════════════════════════════════════════════
     async function fetchPrices() {
       try {
-        const r = await fetch(`https://api.jup.ag/price/v2?ids=${CONFIG.SKR_MINT},${CONFIG.SOL_MINT}`);
-        const d = await r.json();
-        state.prices.SKR = parseFloat(d.data[CONFIG.SKR_MINT]?.price || 0.018);
-        state.prices.SOL = parseFloat(d.data[CONFIG.SOL_MINT]?.price || 130);
-      } catch(e) {}
+        const solRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
+        const solData = await solRes.json();
+        if (solData?.solana?.usd) state.prices.SOL = parseFloat(solData.solana.usd);
+      } catch(e) { console.log('SOL price failed:', e.message); }
+      try {
+        const skrRes = await fetch(`https://api.coingecko.com/api/v3/simple/token_price/solana?contract_addresses=${CONFIG.SKR_MINT}&vs_currencies=usd`);
+        const skrData = await skrRes.json();
+        const skrPrice = skrData?.[CONFIG.SKR_MINT.toLowerCase()]?.usd || skrData?.[CONFIG.SKR_MINT]?.usd;
+        if (skrPrice) state.prices.SKR = parseFloat(skrPrice);
+      } catch(e) { console.log('SKR price failed:', e.message); }
       const skrAmt = CONFIG.TICKET_USD / state.prices.SKR;
       const solAmt = CONFIG.TICKET_USD / state.prices.SOL;
       document.getElementById('sol-price-label').textContent = `$${state.prices.SOL.toFixed(2)} · ${solAmt.toFixed(4)}/ticket`;
