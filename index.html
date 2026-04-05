@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#7B2FFF" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="Weekly on-chain lottery for the Solana ecosystem. Buy tickets with SOL or SKR. Live draws every Thursday on BlockDesk News." />
+
+  <!-- PWA manifest -->
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-192.png" />
+
+  <title>Solana Lotto</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --black:   #000000;
+      --deep:    #050508;
+      --panel:   #0a0a12;
+      --border:  #1a1a2e;
+      --purple:  #7B2FFF;
+      --purple2: #9D5CFF;
+      --purple3: #BF8BFF;
+      --white:   #FFFFFF;
+      --off:     #C8C8D4;
+      --dim:     #606070;
+      --glow:    rgba(123,47,255,0.45);
+      --gloww:   rgba(123,47,255,0.15);
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bot: env(safe-area-inset-bottom, 0px);
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    html { scroll-behavior:smooth; }
+
+    body {
+      background: var(--black);
+      color: var(--white);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 16px;
+      overflow-x: hidden;
+      /* Mobile: no crosshair cursor */
+      cursor: default;
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bot);
+    }
+
+    @media (pointer:fine) { body { cursor: crosshair; } }
+
+    body::before {
+      content:''; position:fixed; inset:0; pointer-events:none; z-index:9999;
+      background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px);
+    }
+
+    .grid-bg {
+      position:fixed; inset:0; pointer-events:none; z-index:0;
+      background-image: linear-gradient(rgba(123,47,255,0.04) 1px,transparent 1px), linear-gradient(90deg,rgba(123,47,255,0.04) 1px,transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    .corner { position:fixed; width:50px; height:50px; pointer-events:none; z-index:100; }
+    .corner--tl { top:calc(16px + var(--safe-top)); left:16px; border-top:2px solid var(--purple); border-left:2px solid var(--purple); }
+    .corner--tr { top:calc(16px + var(--safe-top)); right:16px; border-top:2px solid var(--purple); border-right:2px solid var(--purple); }
+    .corner--bl { bottom:calc(16px + var(--safe-bot)); left:16px; border-bottom:2px solid var(--purple); border-left:2px solid var(--purple); }
+    .corner--br { bottom:calc(16px + var(--safe-bot)); right:16px; border-bottom:2px solid var(--purple); border-right:2px solid var(--purple); }
+
+    /* ── HEADER ───────────────────────────────────────── */
+    header {
+      position:fixed; top:0; left:0; right:0; z-index:500;
+      display:flex; justify-content:space-between; align-items:center;
+      padding: calc(12px + var(--safe-top)) 20px 12px;
+      background:rgba(0,0,0,0.92);
+      border-bottom:1px solid var(--border);
+      backdrop-filter:blur(16px);
+      -webkit-backdrop-filter:blur(16px);
+    }
+
+    .logo { display:flex; align-items:center; gap:10px; text-decoration:none; }
+    .logo-icon { width:36px; height:36px; flex-shrink:0; }
+    .logo-text { display:flex; flex-direction:column; line-height:1; }
+    .logo-solana { font-family:'Orbitron',monospace; font-weight:900; font-size:15px; letter-spacing:0.08em; color:var(--purple2); }
+    .logo-lotto  { font-family:'Orbitron',monospace; font-weight:700; font-size:9px; letter-spacing:0.38em; color:var(--white); margin-top:2px; }
+
+    .header-right { display:flex; align-items:center; gap:8px; }
+
+    .live-badge {
+      display:inline-flex; align-items:center; gap:6px;
+      font-family:'Orbitron',monospace; font-size:9px; font-weight:700; letter-spacing:0.1em;
+      color:#ff4444; background:rgba(255,68,68,0.07); border:1px solid rgba(255,68,68,0.32);
+      padding:6px 10px; text-decoration:none; transition:all 0.2s;
+      clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%);
+    }
+    .live-badge .ld { width:6px; height:6px; border-radius:50%; background:#ff4444; animation:live-pulse 1.4s ease-in-out infinite; flex-shrink:0; }
+    @keyframes live-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,68,68,0.6)} 50%{box-shadow:0 0 0 5px rgba(255,68,68,0)} }
+    .live-inner { display:flex; flex-direction:column; }
+    .live-label { font-size:9px; line-height:1; }
+    .live-sched { font-size:8px; color:rgba(255,100,100,0.6); font-family:'Share Tech Mono',monospace; margin-top:1px; }
+
+    #connectBtn {
+      font-family:'Orbitron',monospace; font-size:9px; font-weight:700; letter-spacing:0.1em;
+      background:var(--purple); color:var(--white); border:none;
+      padding:9px 14px; cursor:pointer;
+      clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);
+      transition:background 0.2s; white-space:nowrap;
+      /* Large touch target for mobile */
+      min-height:44px;
+    }
+    #connectBtn:hover, #connectBtn:active { background:var(--purple2); }
+    #connectBtn.connected { background:rgba(160,255,176,0.1); color:#a0ffb0; }
+    #connectBtn:disabled { background:var(--border); color:var(--dim); cursor:wait; }
+
+    /* ── WALLET STATUS BAR — mobile only ─────────────── */
+    .wallet-bar {
+      display:none;
+      position:fixed; top:calc(60px + var(--safe-top)); left:0; right:0; z-index:490;
+      background:rgba(123,47,255,0.12); border-bottom:1px solid var(--purple);
+      font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--purple2);
+      text-align:center; padding:6px; letter-spacing:0.1em;
+    }
+    .wallet-bar.show { display:block; }
+
+    /* ── MAIN ─────────────────────────────────────────── */
+    main {
+      position:relative; z-index:1;
+      padding-top: calc(72px + var(--safe-top));
+      max-width: 860px; margin:0 auto;
+      padding-left:16px; padding-right:16px;
+      padding-bottom: calc(60px + var(--safe-bot));
+    }
+
+    /* ── HERO ─────────────────────────────────────────── */
+    .jackpot-hero { text-align:center; padding:48px 16px 32px; }
+    .round-live-pill { display:inline-flex; align-items:center; gap:7px; font-family:'Share Tech Mono',monospace; font-size:10px; color:#4ade80; letter-spacing:0.18em; border:1px solid rgba(74,222,128,0.28); padding:5px 12px; margin-bottom:16px; }
+    .rp-dot { width:6px; height:6px; border-radius:50%; background:#4ade80; animation:rp-pulse 1.5s ease-in-out infinite; }
+    @keyframes rp-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(74,222,128,0.5)} 50%{box-shadow:0 0 0 5px rgba(74,222,128,0)} }
+
+    .jackpot-label { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--dim); letter-spacing:0.25em; text-transform:uppercase; margin-bottom:12px; display:flex; align-items:center; justify-content:center; gap:10px; }
+    .jackpot-label::before { content:''; flex:1; max-width:60px; height:1px; background:linear-gradient(90deg,transparent,var(--border)); }
+    .jackpot-label::after  { content:''; flex:1; max-width:60px; height:1px; background:linear-gradient(90deg,var(--border),transparent); }
+
+    .jackpot-amount { font-family:'Orbitron',monospace; font-size:clamp(42px,10vw,72px); font-weight:900; color:var(--white); line-height:1; text-shadow:0 0 40px var(--glow),0 0 80px rgba(123,47,255,0.15); animation:flicker 9s infinite; }
+    .jackpot-amount .unit { font-size:0.4em; color:var(--purple2); vertical-align:super; font-weight:400; }
+    @keyframes flicker { 0%,93%,95%,97%,100%{opacity:1} 94%{opacity:0.82} 96%{opacity:0.9} }
+    .jackpot-usd { font-family:'Share Tech Mono',monospace; font-size:12px; color:var(--dim); margin-top:6px; }
+
+    /* ── STATS ────────────────────────────────────────── */
+    .stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:2px; margin:20px 0; border:1px solid var(--border); }
+    .stat-cell { background:var(--panel); padding:16px 12px; text-align:center; position:relative; }
+    .stat-cell:not(:last-child)::after { content:''; position:absolute; right:0; top:20%; bottom:20%; width:1px; background:var(--border); }
+    .stat-label { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--dim); letter-spacing:0.18em; text-transform:uppercase; margin-bottom:6px; }
+    .stat-value { font-family:'Orbitron',monospace; font-size:18px; font-weight:700; color:var(--white); }
+    .stat-value.purple { color:var(--purple2); }
+    .stat-value.mono { font-family:'Share Tech Mono',monospace; font-size:16px; }
+
+    /* ── COUNTDOWN ────────────────────────────────────── */
+    .countdown-wrap { display:flex; justify-content:center; gap:3px; margin:6px 0 28px; }
+    .cd-seg { display:flex; flex-direction:column; align-items:center; }
+    .cd-num { font-family:'Orbitron',monospace; font-size:clamp(24px,7vw,36px); font-weight:900; color:var(--white); background:var(--panel); border:1px solid var(--border); width:clamp(60px,16vw,80px); height:clamp(52px,14vw,70px); display:flex; align-items:center; justify-content:center; clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%); }
+    .cd-num.tick { animation:tick-flash 0.12s ease; }
+    @keyframes tick-flash { 0%{border-color:var(--purple);box-shadow:0 0 12px var(--glow)} 100%{border-color:var(--border);box-shadow:none} }
+    .cd-label { font-family:'Share Tech Mono',monospace; font-size:8px; color:var(--dim); letter-spacing:0.2em; margin-top:5px; text-transform:uppercase; }
+    .cd-colon { font-family:'Orbitron',monospace; font-size:24px; color:var(--purple); padding:0 1px; margin-top:12px; animation:blink 1s step-end infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.1} }
+
+    /* ── PLAY SECTION ─────────────────────────────────── */
+    .play-section { border:1px solid var(--border); background:var(--panel); position:relative; padding:28px 20px; margin-bottom:20px; }
+    .play-section::before { content:'PLAY'; position:absolute; top:-1px; left:20px; background:var(--purple); font-family:'Orbitron',monospace; font-size:9px; font-weight:700; letter-spacing:0.2em; color:white; padding:3px 10px; }
+    .play-section::after { content:''; position:absolute; top:0; right:0; width:0; height:0; border-style:solid; border-width:0 20px 20px 0; border-color:transparent var(--black) transparent transparent; }
+
+    /* ── TOKEN TOGGLE ─────────────────────────────────── */
+    .token-toggle { display:grid; grid-template-columns:1fr 1fr; gap:2px; margin-bottom:24px; background:var(--black); padding:2px; }
+    .token-btn { font-family:'Orbitron',monospace; font-size:11px; font-weight:700; letter-spacing:0.08em; padding:16px 10px; border:none; cursor:pointer; transition:background 0.2s,color 0.2s; display:flex; flex-direction:column; align-items:center; gap:3px; background:var(--panel); color:var(--dim); min-height:72px; }
+    .token-btn .t-symbol { font-size:16px; font-family:'Share Tech Mono',monospace; }
+    .token-btn .t-price  { font-size:9px; font-family:'Share Tech Mono',monospace; font-weight:400; }
+    .token-btn.active { background:var(--purple); color:var(--white); }
+    .token-btn:not(.active):active { background:rgba(123,47,255,0.15); }
+
+    /* ── QTY ──────────────────────────────────────────── */
+    .qty-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; gap:12px; }
+    .qty-info .qty-title { font-family:'Rajdhani',sans-serif; font-weight:600; font-size:13px; letter-spacing:0.1em; text-transform:uppercase; color:var(--off); }
+    .qty-info .qty-price { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--dim); margin-top:3px; }
+    .qty-controls { display:flex; align-items:center; border:1px solid var(--border); flex-shrink:0; }
+    .qty-btn { width:48px; height:48px; background:var(--black); border:none; color:var(--purple2); font-size:22px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.15s; }
+    .qty-btn:active { background:var(--purple); color:white; }
+    .qty-display { font-family:'Orbitron',monospace; font-size:20px; font-weight:700; color:var(--white); width:56px; text-align:center; background:var(--panel); height:48px; display:flex; align-items:center; justify-content:center; border-left:1px solid var(--border); border-right:1px solid var(--border); }
+
+    /* ── TICKET PREVIEW ───────────────────────────────── */
+    .tickets-preview { margin-bottom:24px; }
+    .tp-label { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--dim); letter-spacing:0.2em; text-transform:uppercase; margin-bottom:10px; }
+    .ticket-grid { display:flex; flex-wrap:wrap; gap:5px; }
+    .ticket-item { background:var(--black); border:1px solid var(--border); font-family:'Share Tech Mono',monospace; font-size:12px; color:var(--purple2); padding:5px 9px; letter-spacing:0.12em; clip-path:polygon(3px 0%,100% 0%,calc(100% - 3px) 100%,0% 100%); animation:appear 0.25s ease; }
+    @keyframes appear { from{opacity:0;transform:scale(0.85)} to{opacity:1;transform:scale(1)} }
+
+    /* ── BUY BTN ──────────────────────────────────────── */
+    .buy-btn { width:100%; padding:18px 16px; background:var(--purple); border:none; color:var(--white); font-family:'Orbitron',monospace; font-size:13px; font-weight:900; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; clip-path:polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%); transition:background 0.2s; display:flex; align-items:center; justify-content:center; gap:10px; min-height:56px; }
+    .buy-btn:hover, .buy-btn:active { background:var(--purple2); }
+    .buy-btn:disabled { background:var(--border); color:var(--dim); cursor:not-allowed; }
+    .btn-arrow { font-size:16px; animation:slide-x 1.5s ease-in-out infinite; }
+    @keyframes slide-x { 0%,100%{transform:translateX(0)} 50%{transform:translateX(5px)} }
+
+    .buy-note { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--dim); text-align:center; margin-top:10px; line-height:1.6; letter-spacing:0.08em; }
+    .wallet-msg { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--purple2); text-align:center; padding:12px 16px; border:1px dashed var(--purple); margin-top:14px; letter-spacing:0.08em; background:none; width:100%; cursor:pointer; transition:background 0.2s, border-color 0.2s; display:block; }
+    .wallet-msg:hover, .wallet-msg:active { background:rgba(123,47,255,0.1); border-color:var(--purple2); border-style:solid; }
+
+    /* ── SECTION TITLE ────────────────────────────────── */
+    .section-title { font-family:'Orbitron',monospace; font-size:10px; font-weight:700; letter-spacing:0.25em; color:var(--dim); text-transform:uppercase; margin-bottom:14px; display:flex; align-items:center; gap:10px; }
+    .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    /* ── BRACKETS ─────────────────────────────────────── */
+    .brackets-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:2px; margin-bottom:6px; }
+    @media(min-width:520px){ .brackets-grid { grid-template-columns:repeat(6,1fr); } }
+    .bracket-cell { background:var(--panel); border:1px solid var(--border); padding:12px 6px; text-align:center; position:relative; }
+    .bracket-cell:last-child { border-color:var(--purple); background:rgba(123,47,255,0.08); }
+    .b-match { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--dim); margin-bottom:6px; }
+    .b-pct { font-family:'Orbitron',monospace; font-size:15px; font-weight:700; color:var(--purple2); }
+    .bracket-cell:last-child .b-pct { color:var(--white); text-shadow:0 0 10px var(--glow); }
+    .b-label { font-family:'Rajdhani',sans-serif; font-size:9px; color:var(--dim); margin-top:3px; }
+    .b-jackpot { position:absolute; top:-9px; left:50%; transform:translateX(-50%); background:var(--purple); font-family:'Orbitron',monospace; font-size:6px; font-weight:700; letter-spacing:0.1em; color:white; padding:2px 5px; white-space:nowrap; }
+
+    /* ── HOW IT WORKS ─────────────────────────────────── */
+    .how-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:2px; margin-bottom:20px; }
+    @media(min-width:520px){ .how-grid { grid-template-columns:repeat(4,1fr); } }
+    .how-step { background:var(--panel); border:1px solid var(--border); padding:16px 12px; position:relative; }
+    .how-num { font-family:'Orbitron',monospace; font-size:28px; font-weight:900; color:var(--border); line-height:1; margin-bottom:8px; }
+    .how-title { font-family:'Rajdhani',sans-serif; font-weight:700; font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:var(--white); margin-bottom:5px; }
+    .how-desc { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--dim); line-height:1.7; }
+    .yt-link { color:var(--purple2); text-decoration:none; font-weight:700; }
+    .yt-link:active { color:var(--white); }
+
+    /* ── WINNERS TABLE ────────────────────────────────── */
+    .winners-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; margin-bottom:8px; }
+    .winners-table { width:100%; border-collapse:collapse; min-width:320px; }
+    .winners-table th { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--dim); letter-spacing:0.15em; text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); text-transform:uppercase; white-space:nowrap; }
+    .winners-table td { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--off); padding:9px 10px; border-bottom:1px solid rgba(26,26,46,0.5); }
+    .match-dots { display:inline-flex; gap:3px; }
+    .dot { width:7px; height:7px; border-radius:50%; background:var(--border); }
+    .dot.hit { background:var(--purple2); box-shadow:0 0 5px var(--glow); }
+    .prize-tag { color:var(--purple2); font-weight:700; }
+    .round-tag { background:var(--black); border:1px solid var(--border); font-size:9px; padding:2px 5px; color:var(--dim); }
+    .winners-note { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--dim); margin-top:10px; line-height:1.8; }
+
+    /* ── MODAL ────────────────────────────────────────── */
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:1000; display:none; align-items:flex-end; justify-content:center; }
+    @media(min-width:520px){ .modal-overlay { align-items:center; } }
+    .modal-overlay.open { display:flex; }
+    .modal {
+      background:var(--deep); border:1px solid var(--purple);
+      width:100%; max-width:480px;
+      padding:32px 24px calc(32px + var(--safe-bot));
+      position:relative;
+      border-radius:0;
+      box-shadow:0 0 60px rgba(123,47,255,0.3);
+      animation:modal-up 0.25s ease;
+      max-height:92vh; overflow-y:auto;
+    }
+    @media(min-width:520px){
+      .modal { clip-path:polygon(14px 0%,100% 0%,100% calc(100% - 14px),calc(100% - 14px) 100%,0% 100%,0% 14px); animation:modal-in 0.2s ease; padding-bottom:32px; border-radius:0; }
+    }
+    @keyframes modal-up { from{transform:translateY(60px);opacity:0} to{transform:translateY(0);opacity:1} }
+    @keyframes modal-in { from{transform:scale(0.92);opacity:0} to{transform:scale(1);opacity:1} }
+    .modal::before { content:'TRANSACTION'; position:absolute; top:-1px; left:24px; background:var(--purple); font-family:'Orbitron',monospace; font-size:8px; font-weight:700; letter-spacing:0.25em; color:white; padding:3px 10px; }
+    .modal-close { position:absolute; top:10px; right:14px; background:none; border:none; color:var(--dim); font-size:22px; cursor:pointer; padding:4px; min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; }
+    .modal h3 { font-family:'Orbitron',monospace; font-size:15px; font-weight:700; margin-bottom:6px; color:var(--white); }
+    .modal-sub { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--dim); margin-bottom:24px; }
+    .tx-detail { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); font-family:'Share Tech Mono',monospace; font-size:11px; }
+    .tx-detail:last-of-type { border-bottom:none; }
+    .tx-key { color:var(--dim); }
+    .tx-val { color:var(--white); }
+    .tx-val.purple { color:var(--purple2); }
+    .tx-addr { font-size:10px; color:var(--off); background:var(--black); border:1px solid var(--border); padding:8px 10px; margin:14px 0; word-break:break-all; line-height:1.6; font-family:'Share Tech Mono',monospace; }
+    .tx-addr span { color:var(--purple2); }
+    .modal-confirm { width:100%; padding:16px; background:var(--purple); border:none; color:white; font-family:'Orbitron',monospace; font-size:11px; font-weight:700; letter-spacing:0.12em; cursor:pointer; margin-top:16px; clip-path:polygon(7px 0%,100% 0%,calc(100% - 7px) 100%,0% 100%); transition:background 0.2s; min-height:52px; }
+    .modal-confirm:active { background:var(--purple2); }
+    .modal-note { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--dim); text-align:center; margin-top:10px; line-height:1.6; }
+
+    /* ── TOAST ────────────────────────────────────────── */
+    .toast { position:fixed; bottom:calc(24px + var(--safe-bot)); left:50%; transform:translateX(-50%) translateY(80px); background:var(--panel); border:1px solid var(--border); font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--off); padding:12px 20px; z-index:9998; transition:transform 0.3s ease; white-space:nowrap; clip-path:polygon(7px 0%,100% 0%,calc(100% - 7px) 100%,0% 100%); max-width:90vw; text-align:center; }
+    .toast.show { transform:translateX(-50%) translateY(0); }
+    .toast.success { border-color:#4ade80; color:#4ade80; }
+    .toast.error   { border-color:#f87171; color:#f87171; }
+    .toast.info    { border-color:var(--purple2); color:var(--purple2); }
+
+    /* ── FOOTER ───────────────────────────────────────── */
+    footer { text-align:center; padding:24px 16px; border-top:1px solid var(--border); font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--dim); letter-spacing:0.12em; position:relative; z-index:1; line-height:2; }
+    footer a { color:var(--purple2); text-decoration:none; }
+
+    /* ── MWA LOADING OVERLAY ──────────────────────────── */
+    .mwa-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:2000; display:none; align-items:center; justify-content:center; flex-direction:column; gap:16px; }
+    .mwa-overlay.show { display:flex; }
+    .mwa-spinner { width:48px; height:48px; border:3px solid var(--border); border-top-color:var(--purple); border-radius:50%; animation:spin 0.8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .mwa-text { font-family:'Share Tech Mono',monospace; font-size:12px; color:var(--purple2); letter-spacing:0.15em; text-align:center; padding:0 24px; line-height:1.8; }
+
+    /* ── NO-WALLET MODAL ──────────────────────────────── */
+    .nowallet-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:1500; display:none; align-items:flex-end; justify-content:center; }
+    @media(min-width:520px){ .nowallet-overlay { align-items:center; } }
+    .nowallet-overlay.open { display:flex; }
+    .nowallet-modal { background:var(--deep); border:1px solid var(--purple); width:100%; max-width:480px; padding:32px 24px calc(32px + var(--safe-bot)); position:relative; box-shadow:0 0 60px rgba(123,47,255,0.3); animation:modal-up 0.25s ease; max-height:92vh; overflow-y:auto; }
+    @media(min-width:520px){ .nowallet-modal { clip-path:polygon(14px 0%,100% 0%,100% calc(100% - 14px),calc(100% - 14px) 100%,0% 100%,0% 14px); animation:modal-in 0.2s ease; padding-bottom:32px; } }
+    .nowallet-modal::before { content:'GET A WALLET'; position:absolute; top:-1px; left:24px; background:var(--purple); font-family:'Orbitron',monospace; font-size:8px; font-weight:700; letter-spacing:0.25em; color:white; padding:3px 10px; }
+    .nowallet-title { font-family:'Orbitron',monospace; font-size:15px; font-weight:700; margin-bottom:6px; color:var(--white); }
+    .nowallet-sub { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--dim); margin-bottom:24px; line-height:1.6; }
+    .wallet-option { display:flex; align-items:center; gap:14px; padding:14px; border:1px solid var(--border); margin-bottom:8px; cursor:pointer; text-decoration:none; transition:border-color 0.2s, background 0.2s; }
+    .wallet-option:hover, .wallet-option:active { border-color:var(--purple); background:rgba(123,47,255,0.08); }
+    .wallet-option-icon { width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; background:rgba(255,255,255,0.06); }
+    .wallet-option-info { flex:1; }
+    .wallet-option-name { font-family:'Orbitron',monospace; font-size:12px; font-weight:700; color:var(--white); margin-bottom:3px; }
+    .wallet-option-desc { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--dim); line-height:1.5; }
+    .wallet-option-tag { font-family:'Orbitron',monospace; font-size:8px; font-weight:700; color:var(--purple2); background:rgba(123,47,255,0.15); padding:2px 7px; border:1px solid rgba(123,47,255,0.3); white-space:nowrap; align-self:flex-start; }
+    .nowallet-close { position:absolute; top:10px; right:14px; background:none; border:none; color:var(--dim); font-size:22px; cursor:pointer; min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; }
+  </style>
+</head>
+<body>
+
+  <div class="grid-bg"></div>
+  <div class="corner corner--tl"></div>
+  <div class="corner corner--tr"></div>
+  <div class="corner corner--bl"></div>
+  <div class="corner corner--br"></div>
+
+  <!-- MWA LOADING OVERLAY -->
+  <div class="mwa-overlay" id="mwaOverlay">
+    <div class="mwa-spinner"></div>
+    <div class="mwa-text" id="mwaText">OPENING SEED VAULT<br/>Approve in your wallet...</div>
+  </div>
+
+  <!-- HEADER -->
+  <header>
+    <a class="logo" href="#">
+      <svg class="logo-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="20" cy="20" r="18" stroke="#7B2FFF" stroke-width="1" stroke-dasharray="3 2.8" opacity="0.55"/>
+        <circle cx="20" cy="20" r="11.5" stroke="#9D5CFF" stroke-width="0.7" opacity="0.35"/>
+        <path d="M20 4 L34 20 L20 36 L6 20 Z" fill="url(#lg1)"/>
+        <path d="M20 4 L6 20 L20 17 Z" fill="rgba(255,255,255,0.09)"/>
+        <path d="M20 4 L34 20 L20 17 Z" fill="rgba(255,255,255,0.2)"/>
+        <path d="M20 36 L6 20 L20 23 Z" fill="rgba(0,0,0,0.3)"/>
+        <circle cx="20" cy="20" r="3" fill="white" opacity="0.85"/>
+        <circle cx="20" cy="20" r="1.5" fill="#BF8BFF"/>
+        <circle cx="32" cy="11" r="2.2" fill="#9D5CFF"/>
+        <circle cx="32" cy="11" r="1" fill="white" opacity="0.8"/>
+        <defs>
+          <linearGradient id="lg1" x1="6" y1="4" x2="34" y2="36" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#C49BFF"/>
+            <stop offset="45%" stop-color="#7B2FFF"/>
+            <stop offset="100%" stop-color="#3a0e99"/>
+          </linearGradient>
+        </defs>
+      </svg>
+      <div class="logo-text">
+        <span class="logo-solana">SOLANA</span>
+        <span class="logo-lotto">LOTTO</span>
+      </div>
+    </a>
+
+    <div class="header-right">
+      <a class="live-badge" href="https://www.youtube.com/c/BlockDeskventures" target="_blank" rel="noopener">
+        <div class="ld"></div>
+        <div class="live-inner">
+          <div class="live-label">LIVE</div>
+          <div class="live-sched">THU · 3PM UTC</div>
+        </div>
+      </a>
+      <button id="connectBtn" onclick="handleConnect()">CONNECT</button>
+    </div>
+  </header>
+
+  <!-- WALLET STATUS BAR (mobile) -->
+  <div class="wallet-bar" id="walletBar"></div>
+
+  <!-- MAIN -->
+  <main>
+
+    <section class="jackpot-hero">
+      <div><div class="round-live-pill"><div class="rp-dot"></div>ROUND ACTIVE</div></div>
+      <div class="jackpot-label">Current Jackpot Pool</div>
+      <div class="jackpot-amount"><span class="unit">$</span><span id="jackpotUSD">0.00</span></div>
+      <div class="jackpot-usd" id="jackpotTokens">Loading pool...</div>
+    </section>
+
+    <div class="stats-row">
+      <div class="stat-cell">
+        <div class="stat-label">Tickets Sold</div>
+        <div class="stat-value purple" id="ticketsSold">0</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-label">Draw Date</div>
+        <div class="stat-value mono" id="drawDate">—</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-label">My Tickets</div>
+        <div class="stat-value purple" id="myTickets">0</div>
+      </div>
+    </div>
+
+    <div class="countdown-wrap">
+      <div class="cd-seg"><div class="cd-num" id="cd-d">00</div><div class="cd-label">Days</div></div>
+      <div class="cd-colon">:</div>
+      <div class="cd-seg"><div class="cd-num" id="cd-h">00</div><div class="cd-label">Hrs</div></div>
+      <div class="cd-colon">:</div>
+      <div class="cd-seg"><div class="cd-num" id="cd-m">00</div><div class="cd-label">Min</div></div>
+      <div class="cd-colon">:</div>
+      <div class="cd-seg"><div class="cd-num" id="cd-s">00</div><div class="cd-label">Sec</div></div>
+    </div>
+
+    <!-- PLAY -->
+    <div class="play-section">
+      <div class="token-toggle">
+        <button class="token-btn active" id="btn-SOL" onclick="selectToken('SOL')">
+          <div class="t-symbol">◎ SOL</div>
+          <div class="t-price" id="sol-price-label">Loading...</div>
+        </button>
+        <button class="token-btn" id="btn-SKR" onclick="selectToken('SKR')">
+          <div class="t-symbol">◈ SKR</div>
+          <div class="t-price" id="skr-price-label">Loading...</div>
+        </button>
+      </div>
+
+      <div class="qty-row">
+        <div class="qty-info">
+          <div class="qty-title">Ticket Quantity</div>
+          <div class="qty-price">$5.00 per ticket — live price</div>
+        </div>
+        <div class="qty-controls">
+          <button class="qty-btn" onclick="changeQty(-1)">−</button>
+          <div class="qty-display" id="qtyDisplay">1</div>
+          <button class="qty-btn" onclick="changeQty(1)">+</button>
+        </div>
+      </div>
+
+      <div class="tickets-preview">
+        <div class="tp-label">Your tickets — numbers assigned on purchase</div>
+        <div class="ticket-grid" id="ticketGrid"></div>
+      </div>
+
+      <button class="buy-btn" id="buyBtn" onclick="handleBuy()">
+        <span>BUY</span>
+        <span id="buyBtnCost">1 TICKET</span>
+        <span class="btn-arrow">→</span>
+      </button>
+
+      <button id="walletMsg" class="wallet-msg" onclick="handleConnect()">⚡ TAP CONNECT TO ENTER THE DRAW</button>
+
+      <div class="buy-note">
+        Verified on Solscan · Live draw every Thursday on BlockDesk News<br/>
+        Treasury: 4GaL7h...un2 · SOL &amp; SKR accepted
+      </div>
+    </div>
+
+    <!-- BRACKETS -->
+    <p class="section-title">Prize Brackets</p>
+    <div class="brackets-grid">
+      <div class="bracket-cell"><div class="b-match">Match 1</div><div class="b-pct">2%</div><div class="b-label">of pool</div></div>
+      <div class="bracket-cell"><div class="b-match">Match 2</div><div class="b-pct">3%</div><div class="b-label">of pool</div></div>
+      <div class="bracket-cell"><div class="b-match">Match 3</div><div class="b-pct">5%</div><div class="b-label">of pool</div></div>
+      <div class="bracket-cell"><div class="b-match">Match 4</div><div class="b-pct">10%</div><div class="b-label">of pool</div></div>
+      <div class="bracket-cell"><div class="b-match">Match 5</div><div class="b-pct">20%</div><div class="b-label">of pool</div></div>
+      <div class="bracket-cell">
+        <div class="b-jackpot">JACKPOT</div>
+        <div class="b-match">Match 6</div>
+        <div class="b-pct">40%</div>
+        <div class="b-label">of pool</div>
+      </div>
+    </div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);margin-bottom:24px;letter-spacing:0.08em;line-height:1.8;">
+      ◈ Operator fee: 20% &nbsp;·&nbsp; Unclaimed brackets roll to next round &nbsp;·&nbsp; Digits matched left-to-right
+    </div>
+
+    <!-- HOW IT WORKS -->
+    <p class="section-title">How It Works</p>
+    <div class="how-grid">
+      <div class="how-step">
+        <div class="how-num">01</div>
+        <div class="how-title">Connect</div>
+        <div class="how-desc">Tap Connect — opens your Seed Vault or any MWA wallet</div>
+      </div>
+      <div class="how-step">
+        <div class="how-num">02</div>
+        <div class="how-title">Buy Tickets</div>
+        <div class="how-desc">$5 per ticket in SOL or SKR at live market price</div>
+      </div>
+      <div class="how-step">
+        <div class="how-num">03</div>
+        <div class="how-title">Watch Live</div>
+        <div class="how-desc">Draw every Thursday on <a class="yt-link" href="https://www.youtube.com/c/BlockDeskventures" target="_blank">BlockDesk News</a> at 3PM UTC</div>
+      </div>
+      <div class="how-step">
+        <div class="how-num">04</div>
+        <div class="how-title">Get Paid</div>
+        <div class="how-desc">Winners paid to their wallet live on stream — verify on Solscan</div>
+      </div>
+    </div>
+
+    <!-- WINNERS -->
+    <p class="section-title">Recent Winners</p>
+    <div class="winners-wrap">
+      <table class="winners-table">
+        <thead>
+          <tr><th>Round</th><th>Wallet</th><th>Match</th><th>Prize</th></tr>
+        </thead>
+        <tbody id="winnersBody">
+          <tr><td colspan="4" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);text-align:center;padding:24px;">No draws yet — be the first to play</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="winners-note">
+      ◈ Updated after each live draw on <a class="yt-link" href="https://www.youtube.com/c/BlockDeskventures" target="_blank">BlockDesk News</a>.<br/>
+      All results verifiable on-chain. Each row shows the wallet, digits matched, and prize paid.
+    </div>
+
+  </main>
+
+  <footer>
+    <div>SOLANA LOTTO · Powered by Solana · Draw every Thursday at 3PM UTC</div>
+    <div style="margin-top:4px;">
+      <a href="https://www.youtube.com/c/BlockDeskventures" target="_blank">BlockDesk News</a>
+      &nbsp;·&nbsp; <a href="https://blockdesk.news" target="_blank">blockdesk.news</a>
+      &nbsp;·&nbsp; <a href="https://solscan.io/account/4GaL7hAjFGaRPm51CBBhZZuidRs6huj3PC3Pu3Zkfun2" target="_blank">Treasury</a>
+    </div>
+  </footer>
+
+  <!-- NO-WALLET MODAL -->
+  <div class="nowallet-overlay" id="noWalletModal">
+    <div class="nowallet-modal">
+      <button class="nowallet-close" onclick="closeNoWalletModal()">✕</button>
+      <div class="nowallet-title">CONNECT A WALLET</div>
+      <div class="nowallet-sub" id="noWalletSub">Choose your wallet to enter the draw.</div>
+
+      <!-- Seed Vault — shown on Android/Seeker only -->
+      <div id="seedVaultOption" style="display:none;">
+        <a class="wallet-option" href="#" onclick="trySeedVault(); return false;">
+          <div class="wallet-option-icon">◈</div>
+          <div class="wallet-option-info">
+            <div class="wallet-option-name">Seed Vault</div>
+            <div class="wallet-option-desc">Your Seeker's built-in hardware wallet.<br/>Most secure — biometric signing.</div>
+          </div>
+          <div class="wallet-option-tag">RECOMMENDED</div>
+        </a>
+      </div>
+
+      <!-- Phantom -->
+      <a class="wallet-option" href="https://phantom.app/download" target="_blank" rel="noopener" id="phantomOption">
+        <div class="wallet-option-icon">👻</div>
+        <div class="wallet-option-info">
+          <div class="wallet-option-name">Phantom</div>
+          <div class="wallet-option-desc" id="phantomDesc">Install the browser extension to connect on desktop.</div>
+        </div>
+        <div class="wallet-option-tag" id="phantomTag">INSTALL</div>
+      </a>
+
+      <!-- Backpack -->
+      <a class="wallet-option" href="https://www.backpack.app/" target="_blank" rel="noopener">
+        <div class="wallet-option-icon">🎒</div>
+        <div class="wallet-option-info">
+          <div class="wallet-option-name">Backpack</div>
+          <div class="wallet-option-desc">xNFT wallet — desktop browser extension.</div>
+        </div>
+        <div class="wallet-option-tag">INSTALL</div>
+      </a>
+
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);margin-top:16px;line-height:1.8;letter-spacing:0.08em;">
+        ◈ On Seeker phone, Seed Vault opens automatically.<br/>
+        On desktop, install Phantom or Backpack browser extension.
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL -->
+
+  <div class="modal-overlay" id="buyModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal()">✕</button>
+      <h3>CONFIRM PURCHASE</h3>
+      <div class="modal-sub" id="modalSub">Send payment to treasury wallet</div>
+      <div class="tx-detail"><span class="tx-key">TICKETS</span><span class="tx-val" id="modal-tickets">1 ticket</span></div>
+      <div class="tx-detail"><span class="tx-key">AMOUNT</span><span class="tx-val purple" id="modal-amount">—</span></div>
+      <div class="tx-detail"><span class="tx-key">USD VALUE</span><span class="tx-val" id="modal-usd">~$5.00</span></div>
+      <div class="tx-detail"><span class="tx-key">TOKEN</span><span class="tx-val" id="modal-token">SOL</span></div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);margin-top:14px;margin-bottom:5px;letter-spacing:0.1em;">TREASURY WALLET:</div>
+      <div class="tx-addr"><span>4GaL7hAjFGaRPm51CBBhZZuidRs6huj3PC3Pu3Zkfun2</span></div>
+      <button class="modal-confirm" id="modalConfirmBtn" onclick="confirmPurchase()">SEND PAYMENT VIA WALLET →</button>
+      <div class="modal-note">
+        Your wallet will open to sign &amp; send the transaction.<br/>
+        Tickets assigned after payment confirms on-chain.
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ═══════════════════════════════════════════════════════════
+    // CONFIG
+    // ═══════════════════════════════════════════════════════════
+    const CONFIG = {
+      TREASURY:        '4GaL7hAjFGaRPm51CBBhZZuidRs6huj3PC3Pu3Zkfun2',
+      TICKET_USD:      5.00,
+      SKR_MINT:        'SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3',
+      SOL_MINT:        'So11111111111111111111111111111111111111112',
+      DRAW_DAY:        4,      // Thursday
+      DRAW_HOUR_UTC:   15,     // 15:00 UTC
+      ROUND:           1,
+      APP_NAME:        'Solana Lotto',
+      APP_URI:         'https://edward-sirofsky.github.io/solana-lotto',
+      APP_ICON:        'https://edward-sirofsky.github.io/solana-lotto/icons/icon-192.png',
+      RPC:             'https://api.mainnet-beta.solana.com',
+    };
+
+    // ═══════════════════════════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════════════════════════
+    let state = {
+      walletAddress:  null,
+      walletType:     null,   // 'mwa' | 'phantom' | 'backpack'
+      selectedToken:  'SOL',
+      qty:            1,
+      prices:         { SOL: 130, SKR: 0.018 },
+      ticketsSold:    0,
+      myTickets:      [],
+      isMobile:       /Android|iPhone|iPad/i.test(navigator.userAgent),
+    };
+
+    // ═══════════════════════════════════════════════════════════
+    // MOBILE WALLET ADAPTER (MWA) — Seed Vault support
+    // Uses the @solana-mobile/wallet-standard-mobile detection
+    // pattern. On Android, fires a solana-wallet:// intent which
+    // the Seed Vault / Phantom Mobile / any MWA wallet catches.
+    // ═══════════════════════════════════════════════════════════
+
+    function isMWAAvailable() {
+      // We're inside a TWA on Android, OR browser on Android
+      return state.isMobile && /Android/i.test(navigator.userAgent);
+    }
+
+    async function connectMWA() {
+      // Try Wallet Standard API — Seed Vault injects window.navigator.wallets in TWA
+      // and some implementations also inject window.wallets.
+      showMWAOverlay('CONNECTING TO WALLET\nApprove in your wallet...');
+
+      return new Promise((resolve, reject) => {
+        const walletStore = window.navigator?.wallets ?? window.wallets;
+        if (walletStore) {
+          try {
+            const available = walletStore.get();
+            if (available && available.length > 0) {
+              const wallet = available[0]; // Seed Vault is first in TWA context
+              wallet.features['standard:connect']
+                .connect({ silent: false })
+                .then(result => {
+                  hideMWAOverlay();
+                  const addr = result.accounts?.[0]?.address;
+                  if (addr) resolve({ address: addr, type: 'mwa' });
+                  else reject(new Error('No account returned'));
+                })
+                .catch(e => { hideMWAOverlay(); reject(e); });
+              return;
+            }
+          } catch(e) { console.log('Wallet Standard error:', e); }
+        }
+        // No Wallet Standard found — caller will show the no-wallet modal
+        hideMWAOverlay();
+        reject(new Error('no_wallet_standard'));
+      });
+    }
+
+    function showMWAOverlay(msg) {
+      document.getElementById('mwaText').innerHTML = msg.replace('\n','<br/>');
+      document.getElementById('mwaOverlay').classList.add('show');
+    }
+    function hideMWAOverlay() {
+      document.getElementById('mwaOverlay').classList.remove('show');
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // WALLET CONNECTION — Seed Vault first, then fallbacks
+    // ═══════════════════════════════════════════════════════════
+    async function handleConnect() {
+      const btn = document.getElementById('connectBtn');
+
+      // DISCONNECT
+      if (state.walletAddress) {
+        state.walletAddress = null;
+        state.walletType = null;
+        state.myTickets = [];
+        btn.textContent = 'CONNECT';
+        btn.classList.remove('connected');
+        btn.disabled = false;
+        document.getElementById('walletMsg').style.display = 'block';
+        document.getElementById('walletBar').classList.remove('show');
+        showToast('Wallet disconnected', 'info');
+        return;
+      }
+
+      btn.textContent = 'CONNECTING...';
+      btn.disabled = true;
+
+      try {
+        let result = null;
+
+        // ── 1. Try injected wallets (Phantom ext / Phantom mobile browser / Backpack) ──
+        const provider = window.phantom?.solana || window.backpack?.solana;
+        if (provider) {
+          const resp = await provider.connect();
+          result = {
+            address: resp.publicKey.toString(),
+            type: provider === window.phantom?.solana ? 'phantom' : 'backpack'
+          };
+        }
+
+        // ── 2. Try Wallet Standard / MWA (Seed Vault in TWA on Seeker) ──────
+        if (!result && isMWAAvailable()) {
+          try {
+            result = await connectMWA();
+          } catch(e) {
+            console.log('Wallet Standard/MWA failed:', e.message);
+          }
+        }
+
+        // ── 3. Legacy window.solana fallback ─────────────────────────────────
+        if (!result && window.solana) {
+          try {
+            const resp = await window.solana.connect();
+            result = { address: resp.publicKey.toString(), type: 'injected' };
+          } catch(e) { console.log('Legacy solana failed:', e.message); }
+        }
+
+        // ── 4. No wallet found — show options modal ───────────────────────────
+        if (!result) {
+          showNoWalletModal();
+          btn.textContent = 'CONNECT';
+          btn.disabled = false;
+          return;
+        }
+
+        // ── Connected ────────────────────────────────────────
+        state.walletAddress = result.address;
+        state.walletType    = result.type;
+        const short = result.address.slice(0,4) + '...' + result.address.slice(-4);
+        btn.textContent = short;
+        btn.classList.add('connected');
+        btn.disabled = false;
+        document.getElementById('walletMsg').style.display = 'none';
+
+        // Show wallet bar on mobile
+        const bar = document.getElementById('walletBar');
+        bar.textContent = `◈ ${result.type === 'mwa' ? 'SEED VAULT' : result.type.toUpperCase()} · ${short}`;
+        bar.classList.add('show');
+
+        showToast(`Connected: ${short}`, 'success');
+
+      } catch(e) {
+        btn.textContent = 'CONNECT';
+        btn.disabled = false;
+        showToast(e.message === 'Wallet connection timed out' ? 'Wallet timed out — try again' : 'Connection rejected', 'error');
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // PRICES — Jupiter API
+    // ═══════════════════════════════════════════════════════════
+    async function fetchPrices() {
+      try {
+        const r = await fetch(`https://api.jup.ag/price/v2?ids=${CONFIG.SKR_MINT},${CONFIG.SOL_MINT}`);
+        const d = await r.json();
+        state.prices.SKR = parseFloat(d.data[CONFIG.SKR_MINT]?.price || 0.018);
+        state.prices.SOL = parseFloat(d.data[CONFIG.SOL_MINT]?.price || 130);
+      } catch(e) {}
+      const skrAmt = CONFIG.TICKET_USD / state.prices.SKR;
+      const solAmt = CONFIG.TICKET_USD / state.prices.SOL;
+      document.getElementById('sol-price-label').textContent = `$${state.prices.SOL.toFixed(2)} · ${solAmt.toFixed(4)}/ticket`;
+      document.getElementById('skr-price-label').textContent = `$${state.prices.SKR.toFixed(4)} · ${Math.round(skrAmt).toLocaleString()}/ticket`;
+      updateBuyButton();
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // POOL
+    // ═══════════════════════════════════════════════════════════
+    function updatePool() {
+      const jackpotUSD = state.ticketsSold * CONFIG.TICKET_USD * 0.80;
+      document.getElementById('jackpotUSD').textContent =
+        jackpotUSD > 0 ? jackpotUSD.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '0.00';
+      const skrEq = state.prices.SKR > 0 ? Math.round(jackpotUSD / state.prices.SKR).toLocaleString() : '—';
+      const solEq = state.prices.SOL > 0 ? (jackpotUSD / state.prices.SOL).toFixed(3) : '—';
+      document.getElementById('jackpotTokens').textContent = `≈ ${skrEq} SKR  /  ${solEq} SOL`;
+      document.getElementById('ticketsSold').textContent = state.ticketsSold;
+      document.getElementById('myTickets').textContent = state.myTickets.length;
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // COUNTDOWN — Thursday 15:00 UTC
+    // ═══════════════════════════════════════════════════════════
+    function getNextDraw() {
+      const now = new Date(), d = new Date(now);
+      d.setUTCHours(CONFIG.DRAW_HOUR_UTC, 0, 0, 0);
+      let days = (CONFIG.DRAW_DAY - now.getUTCDay() + 7) % 7;
+      if (days === 0 && now >= d) days = 7;
+      d.setUTCDate(d.getUTCDate() + days);
+      return d;
+    }
+    function updateCountdown() {
+      const diff = getNextDraw() - new Date();
+      if (diff <= 0) { updateCountdown(); return; }
+      const dd = Math.floor(diff/86400000), hh = Math.floor((diff%86400000)/3600000),
+            mm = Math.floor((diff%3600000)/60000), ss = Math.floor((diff%60000)/1000);
+      const set = (id,v) => {
+        const el=document.getElementById(id), p=String(v).padStart(2,'0');
+        if(el.textContent!==p){el.textContent=p;el.classList.remove('tick');void el.offsetWidth;el.classList.add('tick');}
+      };
+      set('cd-d',dd);set('cd-h',hh);set('cd-m',mm);set('cd-s',ss);
+      document.getElementById('drawDate').textContent = getNextDraw().toLocaleDateString('en-GB',{day:'2-digit',month:'short',timeZone:'UTC'});
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // TICKET NUMBERS
+    // ═══════════════════════════════════════════════════════════
+    function genTicket(){let n='';for(let i=0;i<6;i++)n+=Math.floor(Math.random()*10);return n.split('').join('-');}
+    function renderTickets(){
+      const g=document.getElementById('ticketGrid');g.innerHTML='';
+      for(let i=0;i<state.qty;i++){const d=document.createElement('div');d.className='ticket-item';d.textContent=`#${genTicket()}`;g.appendChild(d);}
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // CONTROLS
+    // ═══════════════════════════════════════════════════════════
+    function selectToken(t){
+      state.selectedToken=t;
+      document.getElementById('btn-SOL').classList.toggle('active',t==='SOL');
+      document.getElementById('btn-SKR').classList.toggle('active',t==='SKR');
+      updateBuyButton();
+    }
+    function changeQty(d){
+      state.qty=Math.max(1,Math.min(100,state.qty+d));
+      document.getElementById('qtyDisplay').textContent=state.qty;
+      updateBuyButton();renderTickets();
+    }
+    function updateBuyButton(){
+      const p=state.prices[state.selectedToken],pt=p>0?CONFIG.TICKET_USD/p:0,tot=pt*state.qty;
+      const sym=state.selectedToken,dp=sym==='SKR'?0:4;
+      document.getElementById('buyBtnCost').textContent=`${state.qty} TICKET${state.qty>1?'S':''} — ${tot.toFixed(dp)} ${sym}`;
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // BUY FLOW
+    // ═══════════════════════════════════════════════════════════
+    function handleBuy(){
+      if(!state.walletAddress){showToast('Connect your wallet first','error');return;}
+      const p=state.prices[state.selectedToken],pt=p>0?CONFIG.TICKET_USD/p:0,tot=pt*state.qty;
+      const sym=state.selectedToken,dp=sym==='SKR'?0:4;
+      document.getElementById('modal-tickets').textContent=`${state.qty} ticket${state.qty>1?'s':''}`;
+      document.getElementById('modal-amount').textContent=`${tot.toFixed(dp)} ${sym}`;
+      document.getElementById('modal-usd').textContent=`~$${(state.qty*CONFIG.TICKET_USD).toFixed(2)}`;
+      document.getElementById('modal-token').textContent=sym;
+      document.getElementById('modalSub').textContent=`Send ${tot.toFixed(dp)} ${sym} to treasury`;
+      document.getElementById('buyModal').classList.add('open');
+    }
+    function closeModal(){document.getElementById('buyModal').classList.remove('open');}
+
+    // ── NO-WALLET MODAL ──────────────────────────────────────
+    function showNoWalletModal() {
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      // Show Seed Vault option only on Android
+      document.getElementById('seedVaultOption').style.display = isAndroid ? 'block' : 'none';
+      // Update Phantom copy based on platform
+      if (isAndroid) {
+        document.getElementById('phantomDesc').textContent = 'Open this app inside Phantom\'s browser to connect instantly.';
+        document.getElementById('phantomTag').textContent  = 'OPEN';
+        document.getElementById('phantomOption').href      =
+          'https://phantom.app/ul/browse/' + encodeURIComponent(CONFIG.APP_URI) +
+          '?ref=' + encodeURIComponent(CONFIG.APP_URI);
+        document.getElementById('noWalletSub').textContent = 'No wallet detected. Use Seed Vault (Seeker) or open via Phantom.';
+      } else {
+        document.getElementById('phantomDesc').textContent = 'Install the browser extension, then click Connect again.';
+        document.getElementById('phantomTag').textContent  = 'INSTALL';
+        document.getElementById('noWalletSub').textContent = 'No wallet detected. Install one below then tap Connect again.';
+      }
+      document.getElementById('noWalletModal').classList.add('open');
+    }
+    function closeNoWalletModal() {
+      document.getElementById('noWalletModal').classList.remove('open');
+    }
+    async function trySeedVault() {
+      closeNoWalletModal();
+      const btn = document.getElementById('connectBtn');
+      btn.textContent = 'CONNECTING...';
+      btn.disabled = true;
+      try {
+        const result = await connectMWA();
+        state.walletAddress = result.address;
+        state.walletType    = result.type;
+        const short = result.address.slice(0,4) + '...' + result.address.slice(-4);
+        btn.textContent = short;
+        btn.classList.add('connected');
+        btn.disabled = false;
+        document.getElementById('walletMsg').style.display = 'none';
+        const bar = document.getElementById('walletBar');
+        bar.textContent = `◈ SEED VAULT · ${short}`;
+        bar.classList.add('show');
+        showToast(`Connected: ${short}`, 'success');
+      } catch(e) {
+        btn.textContent = 'CONNECT';
+        btn.disabled = false;
+        showToast('Seed Vault not detected — open as TWA or try Phantom', 'error');
+      }
+    }
+    document.getElementById('noWalletModal').addEventListener('click', function(e){
+      if(e.target === this) closeNoWalletModal();
+    });
+
+    async function confirmPurchase(){
+      const btn = document.getElementById('modalConfirmBtn');
+      btn.textContent = 'OPENING WALLET...';
+      btn.disabled = true;
+
+      const p=state.prices[state.selectedToken],pt=p>0?CONFIG.TICKET_USD/p:0,tot=pt*state.qty;
+      const sym=state.selectedToken;
+
+      // Copy treasury to clipboard as fallback
+      navigator.clipboard?.writeText(CONFIG.TREASURY).catch(()=>{});
+
+      // On mobile with MWA: ideally we'd build a real SPL transfer tx here
+      // For now: copy address + show instructions (full tx signing needs web3.js bundled)
+      closeModal();
+      showToast(`Treasury copied — send ${tot.toFixed(sym==='SKR'?0:4)} ${sym} to complete entry`, 'info');
+
+      // Record optimistic entry
+      for(let i=0;i<state.qty;i++) state.myTickets.push(genTicket());
+      state.ticketsSold+=state.qty;
+      updatePool();
+
+      btn.textContent = 'SEND PAYMENT VIA WALLET →';
+      btn.disabled = false;
+    }
+
+    document.getElementById('buyModal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+
+    // ═══════════════════════════════════════════════════════════
+    // WINNERS — add entries here after each draw
+    // ═══════════════════════════════════════════════════════════
+    const winnersData = [
+      // { round:1, wallet:'7xKX...AsU', matches:3, prize:'$45.20' },
+    ];
+    function renderWinners(){
+      const tbody=document.getElementById('winnersBody');
+      if(!winnersData.length) return;
+      tbody.innerHTML='';
+      winnersData.slice().reverse().forEach(w=>{
+        const dots=Array.from({length:6},(_,i)=>`<span class="dot${i<w.matches?' hit':''}"></span>`).join('');
+        tbody.innerHTML+=`<tr><td><span class="round-tag">#${String(w.round).padStart(3,'0')}</span></td><td>${w.wallet}</td><td><div class="match-dots">${dots}</div></td><td><span class="prize-tag">${w.prize}</span></td></tr>`;
+      });
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // TOAST
+    // ═══════════════════════════════════════════════════════════
+    let toastTimer;
+    function showToast(msg,type='info'){
+      const t=document.getElementById('toast');t.textContent=msg;t.className=`toast ${type} show`;
+      clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3800);
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // SERVICE WORKER REGISTRATION
+    // ═══════════════════════════════════════════════════════════
+    if('serviceWorker' in navigator){
+      window.addEventListener('load',()=>{
+        navigator.serviceWorker.register('/solana-lotto/sw.js',{scope:'/solana-lotto/'})
+          .catch(e=>console.log('SW reg failed:',e));
+      });
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // INIT
+    // ═══════════════════════════════════════════════════════════
+    fetchPrices(); setInterval(fetchPrices, 60000);
+    setInterval(updateCountdown, 1000); updateCountdown();
+    renderTickets(); renderWinners(); updatePool(); updateBuyButton();
+  </script>
+</body>
+</html>
