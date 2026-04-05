@@ -702,11 +702,23 @@
         // ── 1. Try injected wallets (Phantom ext / Phantom mobile browser / Backpack) ──
         const provider = window.phantom?.solana || window.backpack?.solana;
         if (provider) {
-          const resp = await provider.connect();
-          result = {
-            address: resp.publicKey.toString(),
-            type: provider === window.phantom?.solana ? 'phantom' : 'backpack'
-          };
+          try {
+            const resp = await provider.connect();
+            result = {
+              address: resp.publicKey.toString(),
+              type: provider === window.phantom?.solana ? 'phantom' : 'backpack'
+            };
+          } catch(e) {
+            // User explicitly dismissed the wallet prompt → show toast and stop
+            const userRejected = e?.code === 4001 || /reject|denied|cancel/i.test(e?.message || '');
+            if (userRejected) {
+              btn.textContent = 'CONNECT';
+              btn.disabled = false;
+              showToast('Connection rejected', 'error');
+              return;
+            }
+            // Provider exists but errored (not a real rejection) → fall through to modal
+          }
         }
 
         // ── 2. Try Wallet Standard / MWA (Seed Vault in TWA on Seeker) ──────
@@ -753,7 +765,12 @@
       } catch(e) {
         btn.textContent = 'CONNECT';
         btn.disabled = false;
-        showToast(e.message === 'Wallet connection timed out' ? 'Wallet timed out — try again' : 'Connection rejected', 'error');
+        const userRejected = e?.code === 4001 || /reject|denied|cancel/i.test(e?.message || '');
+        if (userRejected || e.message === 'Wallet connection timed out') {
+          showToast(e.message === 'Wallet connection timed out' ? 'Wallet timed out — try again' : 'Connection rejected', 'error');
+        } else {
+          showNoWalletModal();
+        }
       }
     }
 
@@ -864,22 +881,6 @@
 
     // ── NO-WALLET MODAL ──────────────────────────────────────
     function showNoWalletModal() {
-      const isAndroid = /Android/i.test(navigator.userAgent);
-      // Show Seed Vault option only on Android
-      document.getElementById('seedVaultOption').style.display = isAndroid ? 'block' : 'none';
-      // Update Phantom copy based on platform
-      if (isAndroid) {
-        document.getElementById('phantomDesc').textContent = 'Open this app inside Phantom\'s browser to connect instantly.';
-        document.getElementById('phantomTag').textContent  = 'OPEN';
-        document.getElementById('phantomOption').href      =
-          'https://phantom.app/ul/browse/' + encodeURIComponent(CONFIG.APP_URI) +
-          '?ref=' + encodeURIComponent(CONFIG.APP_URI);
-        document.getElementById('noWalletSub').textContent = 'No wallet detected. Use Seed Vault (Seeker) or open via Phantom.';
-      } else {
-        document.getElementById('phantomDesc').textContent = 'Install the browser extension, then click Connect again.';
-        document.getElementById('phantomTag').textContent  = 'INSTALL';
-        document.getElementById('noWalletSub').textContent = 'No wallet detected. Install one below then tap Connect again.';
-      }
       document.getElementById('noWalletModal').classList.add('open');
     }
     function closeNoWalletModal() {
