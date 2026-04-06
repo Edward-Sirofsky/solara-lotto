@@ -101,18 +101,31 @@
     .live-label { font-size:9px; line-height:1; }
     .live-sched { font-size:8px; color:rgba(255,100,100,0.6); font-family:'Share Tech Mono',monospace; margin-top:1px; }
 
+    .wallet-menu-wrap { position:relative; display:inline-block; }
     #connectBtn {
       font-family:'Orbitron',monospace; font-size:9px; font-weight:700; letter-spacing:0.1em;
       background:var(--purple); color:var(--white); border:none;
       padding:9px 14px; cursor:pointer;
       clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);
       transition:background 0.2s; white-space:nowrap;
-      /* Large touch target for mobile */
       min-height:44px;
     }
     #connectBtn:hover, #connectBtn:active { background:var(--purple2); }
     #connectBtn.connected { background:rgba(160,255,176,0.1); color:#a0ffb0; }
     #connectBtn:disabled { background:var(--border); color:var(--dim); cursor:wait; }
+    #walletDropdown {
+      display:none; position:absolute; top:calc(100% + 6px); right:0;
+      background:#0a0a0f; border:1px solid var(--purple);
+      min-width:160px; z-index:9999;
+      font-family:'Share Tech Mono',monospace; font-size:11px;
+    }
+    #walletDropdown.open { display:block; }
+    .wallet-drop-item {
+      display:block; width:100%; padding:12px 16px; text-align:left;
+      background:none; border:none; color:var(--white); cursor:pointer;
+      letter-spacing:0.08em; white-space:nowrap;
+    }
+    .wallet-drop-item:hover { background:rgba(123,47,255,0.2); color:#a0ffb0; }
 
     /* ── WALLET STATUS BAR — mobile only ─────────────── */
     .wallet-bar {
@@ -365,7 +378,13 @@
           <div class="live-sched">THU · 3PM UTC</div>
         </div>
       </a>
-      <button id="connectBtn" onclick="handleConnect()">CONNECT</button>
+      <div class="wallet-menu-wrap">
+        <button id="connectBtn" onclick="handleConnectBtn(event)">CONNECT</button>
+        <div id="walletDropdown">
+          <button class="wallet-drop-item" onclick="copyWalletAddress()">Copy Address</button>
+          <button class="wallet-drop-item" onclick="disconnectWallet()">Disconnect</button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -530,15 +549,24 @@
       <div class="nowallet-title">CONNECT A WALLET</div>
       <div class="nowallet-sub">Choose how to connect to Solana Lotto.</div>
 
-      <!-- Seed Vault — Seeker native -->
+      <!-- Seed Vault -->
       <a class="wallet-option" href="#" onclick="trySeedVault(); return false;">
         <div class="wallet-option-icon">◈</div>
         <div class="wallet-option-info">
           <div class="wallet-option-name">Seed Vault</div>
-          <div class="wallet-option-desc">Seeker's built-in hardware wallet.<br/>Install from the dApp Store for automatic connection.</div>
-          <div style="font-size:9px;color:var(--dim);margin-top:4px;letter-spacing:0.06em;">Available after installing from the Solana dApp Store</div>
+          <div class="wallet-option-desc">Your Seeker's built-in hardware wallet. Available after installing from the Solana dApp Store.</div>
         </div>
-        <div class="wallet-option-tag">SEEKER NATIVE</div>
+        <div class="wallet-option-tag">SEEKER MOBILE ONLY</div>
+      </a>
+
+      <!-- Phantom -->
+      <a class="wallet-option" href="#" onclick="tryPhantom(); return false;">
+        <div class="wallet-option-icon">👻</div>
+        <div class="wallet-option-info">
+          <div class="wallet-option-name">Phantom</div>
+          <div class="wallet-option-desc">Connect with Phantom wallet on mobile or desktop.</div>
+        </div>
+        <div class="wallet-option-tag">RECOMMENDED</div>
       </a>
 
       <!-- Solflare -->
@@ -546,25 +574,10 @@
         <div class="wallet-option-icon">🔥</div>
         <div class="wallet-option-info">
           <div class="wallet-option-name">Solflare</div>
-          <div class="wallet-option-desc">Mobile & desktop Solana wallet.<br/>Powers the Seed Vault on Seeker.</div>
+          <div class="wallet-option-desc">Connect with Solflare wallet.</div>
         </div>
-        <div class="wallet-option-tag">RECOMMENDED</div>
+        <div class="wallet-option-tag">MOBILE &amp; DESKTOP</div>
       </a>
-
-      <!-- Open in Wallet Browser -->
-      <a class="wallet-option" href="#" onclick="openWalletConnect(); return false;">
-        <div class="wallet-option-icon">⚡</div>
-        <div class="wallet-option-info">
-          <div class="wallet-option-name">Open in Wallet Browser</div>
-          <div class="wallet-option-desc">Opens the app inside a WalletConnect-compatible wallet browser.</div>
-        </div>
-        <div class="wallet-option-tag">ALL WALLETS</div>
-      </a>
-
-      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);margin-top:16px;line-height:1.8;letter-spacing:0.08em;">
-        ◈ On Seeker: install from the Solana dApp Store for Seed Vault auto-connect.<br/>
-        On desktop: use Solflare browser extension or WalletConnect.
-      </div>
     </div>
   </div>
 
@@ -591,6 +604,18 @@
 
   <div class="toast" id="toast"></div>
 
+  <!-- Solana web3.js — SystemProgram, Connection, SPL instructions -->
+  <script src="https://unpkg.com/@solana/web3.js@1.98.0/lib/index.iife.min.js"></script>
+
+  <!-- Buffer polyfill + MWA SDK -->
+  <script type="module">
+    import { Buffer } from 'https://esm.sh/buffer@6.0.3';
+    window.Buffer = Buffer;
+    import('https://esm.sh/@solana-mobile/mobile-wallet-adapter-protocol-web3js@2.1.3')
+      .then(({ transact }) => { window._mwaTransact = transact; })
+      .catch(e => console.warn('MWA SDK unavailable:', e));
+  </script>
+
   <script>
     // ═══════════════════════════════════════════════════════════
     // CONFIG
@@ -606,7 +631,8 @@
       APP_NAME:        'Solana Lotto',
       APP_URI:         'https://edward-sirofsky.github.io/solana-lotto',
       APP_ICON:        'https://edward-sirofsky.github.io/solana-lotto/icons/icon-192.png',
-      RPC:             'https://api.mainnet-beta.solana.com',
+      RPC:             'https://mainnet.helius-rpc.com/?api-key=f5b91912-7d12-4e97-8604-496f51b72f34',
+      DRY_RUN:         false,
     };
 
     // ═══════════════════════════════════════════════════════════
@@ -636,34 +662,26 @@
     }
 
     async function connectMWA() {
-      // Try Wallet Standard API — Seed Vault injects window.navigator.wallets in TWA
-      // and some implementations also inject window.wallets.
+      if (!window._mwaTransact) throw new Error('no_wallet_standard');
       showMWAOverlay('CONNECTING TO WALLET\nApprove in your wallet...');
-
-      return new Promise((resolve, reject) => {
-        const walletStore = window.navigator?.wallets ?? window.wallets;
-        if (walletStore) {
-          try {
-            const available = walletStore.get();
-            if (available && available.length > 0) {
-              const wallet = available[0]; // Seed Vault is first in TWA context
-              wallet.features['standard:connect']
-                .connect({ silent: false })
-                .then(result => {
-                  hideMWAOverlay();
-                  const addr = result.accounts?.[0]?.address;
-                  if (addr) resolve({ address: addr, type: 'mwa' });
-                  else reject(new Error('No account returned'));
-                })
-                .catch(e => { hideMWAOverlay(); reject(e); });
-              return;
+      try {
+        const address = await window._mwaTransact(async (wallet) => {
+          const { accounts } = await wallet.authorize({
+            cluster: 'mainnet-beta',
+            identity: {
+              name: CONFIG.APP_NAME,
+              uri:  CONFIG.APP_URI,
+              icon: CONFIG.APP_ICON,
             }
-          } catch(e) { console.log('Wallet Standard error:', e); }
-        }
-        // No Wallet Standard found — caller will show the no-wallet modal
+          });
+          return accounts[0].address.toString();
+        });
         hideMWAOverlay();
-        reject(new Error('no_wallet_standard'));
-      });
+        return { address, type: 'mwa' };
+      } catch(e) {
+        hideMWAOverlay();
+        throw e;
+      }
     }
 
     function showMWAOverlay(msg) {
@@ -677,22 +695,46 @@
     // ═══════════════════════════════════════════════════════════
     // WALLET CONNECTION — Seed Vault first, then fallbacks
     // ═══════════════════════════════════════════════════════════
+    function handleConnectBtn(e) {
+      if (state.walletAddress) {
+        if (e) e.stopPropagation();
+        const dd = document.getElementById('walletDropdown');
+        dd.classList.toggle('open');
+        return;
+      }
+      handleConnect();
+    }
+    function copyWalletAddress() {
+      document.getElementById('walletDropdown').classList.remove('open');
+      navigator.clipboard?.writeText(state.walletAddress).then(() => {
+        showToast('Address copied', 'info');
+      }).catch(() => showToast('Copy failed', 'error'));
+    }
+    function disconnectWallet() {
+      document.getElementById('walletDropdown').classList.remove('open');
+      const btn = document.getElementById('connectBtn');
+      state.walletAddress = null;
+      state.walletType = null;
+      state.myTickets = [];
+      btn.textContent = 'CONNECT';
+      btn.classList.remove('connected');
+      btn.disabled = false;
+      document.getElementById('walletMsg').style.display = 'block';
+      document.getElementById('walletBar').classList.remove('show');
+      showToast('Wallet disconnected', 'info');
+      showNoWalletModal();
+    }
+    document.addEventListener('click', function(e) {
+      const wrap = document.querySelector('.wallet-menu-wrap');
+      if (wrap && !wrap.contains(e.target)) {
+        document.getElementById('walletDropdown').classList.remove('open');
+      }
+    });
+
     async function handleConnect() {
       const btn = document.getElementById('connectBtn');
 
-      // DISCONNECT
-      if (state.walletAddress) {
-        state.walletAddress = null;
-        state.walletType = null;
-        state.myTickets = [];
-        btn.textContent = 'CONNECT';
-        btn.classList.remove('connected');
-        btn.disabled = false;
-        document.getElementById('walletMsg').style.display = 'block';
-        document.getElementById('walletBar').classList.remove('show');
-        showToast('Wallet disconnected', 'info');
-        return;
-      }
+      if (state.walletAddress) return;
 
       btn.textContent = 'CONNECTING...';
       btn.disabled = true;
@@ -924,6 +966,7 @@
         if (provider) {
           provider.connect().then(resp => {
             state.walletAddress = resp.publicKey.toString();
+            state.walletType    = 'solflare';
             const short = state.walletAddress.slice(0,4) + '...' + state.walletAddress.slice(-4);
             const btn = document.getElementById('connectBtn');
             btn.textContent = short;
@@ -941,34 +984,171 @@
         }
       }
     }
-    function openWalletConnect() {
+    function tryPhantom() {
       closeNoWalletModal();
-      window.location.href = 'https://link.trustwallet.com/open_url?coin_id=501&url=https%3A%2F%2Fedward-sirofsky.github.io%2Fsolana-lotto%2F';
+      const provider = window.phantom?.solana;
+      if (provider) {
+        provider.connect().then(resp => {
+          state.walletAddress = resp.publicKey.toString();
+          state.walletType    = 'phantom';
+          const short = state.walletAddress.slice(0,4) + '...' + state.walletAddress.slice(-4);
+          const btn = document.getElementById('connectBtn');
+          btn.textContent = short;
+          btn.classList.add('connected');
+          btn.disabled = false;
+          document.getElementById('walletMsg').style.display = 'none';
+          const bar = document.getElementById('walletBar');
+          bar.textContent = '◈ PHANTOM · ' + short;
+          bar.classList.add('show');
+          showToast('Phantom connected: ' + short, 'success');
+        }).catch(e => {
+          const rejected = e?.code === 4001 || /reject|denied|cancel/i.test(e?.message || '');
+          showToast(rejected ? 'Connection rejected' : 'Phantom not available', 'error');
+        });
+      } else if (/Android/i.test(navigator.userAgent)) {
+        window.location.href = 'https://phantom.app/ul/v1/browse/https%3A%2F%2Fedward-sirofsky.github.io%2Fsolana-lotto%2F';
+      } else {
+        window.open('https://phantom.app', '_blank');
+        showToast('Install Phantom then try again', 'info');
+      }
     }
 
     async function confirmPurchase(){
       const btn = document.getElementById('modalConfirmBtn');
-      btn.textContent = 'OPENING WALLET...';
+
+      if (CONFIG.DRY_RUN) {
+        btn.textContent = 'SIMULATING...';
+        btn.disabled = true;
+        await new Promise(r => setTimeout(r, 2000));
+        for (let i = 0; i < state.qty; i++) state.myTickets.push(genTicket());
+        state.ticketsSold += state.qty;
+        updatePool();
+        closeModal();
+        showToast('DRY RUN: Ticket purchase simulated', 'info');
+        btn.textContent = 'SEND PAYMENT VIA WALLET →';
+        btn.disabled = false;
+        return;
+      }
+
+      btn.textContent = 'BUILDING TX...';
       btn.disabled = true;
 
-      const p=state.prices[state.selectedToken],pt=p>0?CONFIG.TICKET_USD/p:0,tot=pt*state.qty;
-      const sym=state.selectedToken;
+      try {
+        const sym = state.selectedToken;
+        const p   = state.prices[sym];
+        const pt  = p > 0 ? CONFIG.TICKET_USD / p : 0;
+        const tot = pt * state.qty;
 
-      // Copy treasury to clipboard as fallback
-      navigator.clipboard?.writeText(CONFIG.TREASURY).catch(()=>{});
+        const { Connection, PublicKey, SystemProgram, Transaction,
+                TransactionInstruction, LAMPORTS_PER_SOL } = solanaWeb3;
 
-      // On mobile with MWA: ideally we'd build a real SPL transfer tx here
-      // For now: copy address + show instructions (full tx signing needs web3.js bundled)
-      closeModal();
-      showToast(`Treasury copied — send ${tot.toFixed(sym==='SKR'?0:4)} ${sym} to complete entry`, 'info');
+        const conn = new Connection(CONFIG.RPC, 'confirmed');
+        const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash();
 
-      // Record optimistic entry
-      for(let i=0;i<state.qty;i++) state.myTickets.push(genTicket());
-      state.ticketsSold+=state.qty;
-      updatePool();
+        const fromPubkey = new PublicKey(state.walletAddress);
+        const toPubkey   = new PublicKey(CONFIG.TREASURY);
+        const tx = new Transaction({ recentBlockhash: blockhash, feePayer: fromPubkey });
 
-      btn.textContent = 'SEND PAYMENT VIA WALLET →';
-      btn.disabled = false;
+        if (sym === 'SOL') {
+          tx.add(SystemProgram.transfer({
+            fromPubkey,
+            toPubkey,
+            lamports: Math.round(tot * LAMPORTS_PER_SOL),
+          }));
+        } else {
+          // SKR — SPL token transfer
+          const mintPubkey = new PublicKey(CONFIG.SKR_MINT);
+          const TOKEN_PROG = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+          const ATA_PROG   = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bFB');
+
+          let decimals = 9;
+          try {
+            const mintInfo = await conn.getParsedAccountInfo(mintPubkey);
+            decimals = mintInfo.value?.data?.parsed?.info?.decimals ?? 9;
+          } catch(_) {}
+
+          const amount = Math.round(tot * Math.pow(10, decimals));
+
+          const [fromATA] = PublicKey.findProgramAddressSync(
+            [fromPubkey.toBytes(), TOKEN_PROG.toBytes(), mintPubkey.toBytes()], ATA_PROG
+          );
+          const [toATA] = PublicKey.findProgramAddressSync(
+            [toPubkey.toBytes(), TOKEN_PROG.toBytes(), mintPubkey.toBytes()], ATA_PROG
+          );
+
+          // Create treasury ATA if needed (idempotent — no-op if already exists)
+          tx.add(new TransactionInstruction({
+            programId: ATA_PROG,
+            keys: [
+              { pubkey: fromPubkey,             isSigner: true,  isWritable: true  }, // payer
+              { pubkey: toATA,                  isSigner: false, isWritable: true  }, // ATA to create
+              { pubkey: toPubkey,               isSigner: false, isWritable: false }, // ATA owner (treasury)
+              { pubkey: mintPubkey,             isSigner: false, isWritable: false }, // mint
+              { pubkey: SystemProgram.programId,isSigner: false, isWritable: false }, // system program
+              { pubkey: TOKEN_PROG,             isSigner: false, isWritable: false }, // token program
+            ],
+            data: new Uint8Array([1]), // 1 = CreateIdempotent
+          }));
+
+          // SPL Transfer instruction: byte 0 = discriminator 3, bytes 1-8 = u64 LE amount
+          const data = new Uint8Array(9);
+          data[0] = 3;
+          new DataView(data.buffer).setBigUint64(1, BigInt(amount), true);
+
+          tx.add(new TransactionInstruction({
+            programId: TOKEN_PROG,
+            keys: [
+              { pubkey: fromATA,    isSigner: false, isWritable: true },
+              { pubkey: toATA,      isSigner: false, isWritable: true },
+              { pubkey: fromPubkey, isSigner: true,  isWritable: false },
+            ],
+            data,
+          }));
+        }
+
+        btn.textContent = 'APPROVE IN WALLET...';
+
+        let signature;
+        const wt = state.walletType;
+
+        if (wt === 'mwa') {
+          signature = await window._mwaTransact(async (wallet) => {
+            await wallet.authorize({
+              cluster: 'mainnet-beta',
+              identity: { name: CONFIG.APP_NAME, uri: CONFIG.APP_URI, icon: CONFIG.APP_ICON },
+            });
+            const sigs = await wallet.signAndSendTransactions({ transactions: [tx] });
+            return sigs[0];
+          });
+        } else {
+          const provider = wt === 'phantom'  ? window.phantom?.solana
+                         : wt === 'backpack' ? window.backpack?.solana
+                         : wt === 'solflare' ? window.solflare
+                         : window.solana;
+          if (!provider) throw new Error('Wallet not available — reconnect');
+          const raw = await provider.signAndSendTransaction(tx);
+          signature = typeof raw === 'string' ? raw : (raw.signature ?? raw);
+        }
+
+        btn.textContent = 'CONFIRMING...';
+        await conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
+
+        // Record tickets only after on-chain confirmation
+        for (let i = 0; i < state.qty; i++) state.myTickets.push(genTicket());
+        state.ticketsSold += state.qty;
+        updatePool();
+        closeModal();
+        showToast(`${state.qty} ticket${state.qty > 1 ? 's' : ''} confirmed on-chain!`, 'success');
+
+      } catch(e) {
+        console.error('Purchase failed:', e);
+        const msg = e?.message || '';
+        const rejected = e?.code === 4001 || /reject|denied|cancel|dismiss/i.test(msg);
+        showToast(rejected ? 'Transaction cancelled' : `Failed: ${msg.slice(0, 80)}`, 'error');
+      } finally {
+        btn.textContent = 'SEND PAYMENT VIA WALLET →';
+        btn.disabled = false;
+      }
     }
 
     document.getElementById('buyModal').addEventListener('click',function(e){if(e.target===this)closeModal();});
