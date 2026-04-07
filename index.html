@@ -96,7 +96,7 @@
       clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%);
     }
     .live-badge .ld { width:6px; height:6px; border-radius:50%; background:#ff4444; animation:live-pulse 1.4s ease-in-out infinite; flex-shrink:0; }
-    @keyframes live-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,68,68,0.6)} 50%{box-shadow:0 0 0 5px rgba(255,68,68,0)} }
+    @keyframes live-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,68,68,0.6)} 50%{box-shadow:0 0 0 5px rgba(255,68,68,0.32)} }
     .live-inner { display:flex; flex-direction:column; }
     .live-label { font-size:9px; line-height:1; }
     .live-sched { font-size:8px; color:rgba(255,100,100,0.6); font-family:'Share Tech Mono',monospace; margin-top:1px; }
@@ -132,6 +132,7 @@
       display:none;
       position:fixed; top:calc(60px + var(--safe-top)); left:0; right:0; z-index:490;
       background:rgba(123,47,255,0.12); border-bottom:1px solid var(--purple);
+      min-width:160px; z-index:490;
       font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--purple2);
       text-align:center; padding:6px; letter-spacing:0.1em;
     }
@@ -150,7 +151,7 @@
     .jackpot-hero { text-align:center; padding:48px 16px 32px; }
     .round-live-pill { display:inline-flex; align-items:center; gap:7px; font-family:'Share Tech Mono',monospace; font-size:10px; color:#4ade80; letter-spacing:0.18em; border:1px solid rgba(74,222,128,0.28); padding:5px 12px; margin-bottom:16px; }
     .rp-dot { width:6px; height:6px; border-radius:50%; background:#4ade80; animation:rp-pulse 1.5s ease-in-out infinite; }
-    @keyframes rp-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(74,222,128,0.5)} 50%{box-shadow:0 0 0 5px rgba(74,222,128,0)} }
+    @keyframes rp-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(74,222,128,0.5)} 50%{box-shadow:0 0 0 5px rgba(74,222,128,0.32)} }
 
     .jackpot-label { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--dim); letter-spacing:0.25em; text-transform:uppercase; margin-bottom:12px; display:flex; align-items:center; justify-content:center; gap:10px; }
     .jackpot-label::before { content:''; flex:1; max-width:60px; height:1px; background:linear-gradient(90deg,transparent,var(--border)); }
@@ -260,7 +261,6 @@
     /* ── MODAL ────────────────────────────────────────── */
     .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:1000; display:none; align-items:flex-end; justify-content:center; }
     @media(min-width:520px){ .modal-overlay { align-items:center; } }
-    .modal-overlay.open { display:flex; }
     .modal {
       background:var(--deep); border:1px solid var(--purple);
       width:100%; max-width:480px;
@@ -276,7 +276,7 @@
     }
     @keyframes modal-up { from{transform:translateY(60px);opacity:0} to{transform:translateY(0);opacity:1} }
     @keyframes modal-in { from{transform:scale(0.92);opacity:0} to{transform:scale(1);opacity:1} }
-    .modal::before { content:'TRANSACTION'; position:absolute; top:-1px; left:24px; background:var(--purple); font-family:'Orbitron',monospace; font-size:8px; font-weight:700; letter-spacing:0.25em; color:white; padding:3px 10px; }
+    .modal::before { content:'TRANSACTION'; position:absolute; top:-1px; left:24px; background:var(--purple); font-family:'Orbitron',monospace; font-size:8px; font-weight:700; color:white; padding:3px 10px; }
     .modal-close { position:absolute; top:10px; right:14px; background:none; border:none; color:var(--dim); font-size:22px; cursor:pointer; padding:4px; min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; }
     .modal h3 { font-family:'Orbitron',monospace; font-size:15px; font-weight:700; margin-bottom:6px; color:var(--white); }
     .modal-sub { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--dim); margin-bottom:24px; }
@@ -351,7 +351,6 @@
         <path d="M20 4 L34 20 L20 36 L6 20 Z" fill="url(#lg1)"/>
         <path d="M20 4 L6 20 L20 17 Z" fill="rgba(255,255,255,0.09)"/>
         <path d="M20 4 L34 20 L20 17 Z" fill="rgba(255,255,255,0.2)"/>
-        <path d="M20 36 L6 20 L20 23 Z" fill="rgba(0,0,0,0.3)"/>
         <circle cx="20" cy="20" r="3" fill="white" opacity="0.85"/>
         <circle cx="20" cy="20" r="1.5" fill="#BF8BFF"/>
         <circle cx="32" cy="11" r="2.2" fill="#9D5CFF"/>
@@ -576,420 +575,80 @@
           <div class="wallet-option-name">Solflare</div>
           <div class="wallet-option-desc">Connect with Solflare wallet.</div>
         </div>
-        <div class="wallet-option-tag">MOBILE &amp; DESKTOP</div>
+        <div class="wallet-option-tag">RECOMMENDED</div>
       </a>
+
     </div>
   </div>
 
-  <!-- MODAL -->
-
-  <div class="modal-overlay" id="buyModal">
-    <div class="modal">
-      <button class="modal-close" onclick="closeModal()">✕</button>
-      <h3>CONFIRM PURCHASE</h3>
-      <div class="modal-sub" id="modalSub">Send payment to treasury wallet</div>
-      <div class="tx-detail"><span class="tx-key">TICKETS</span><span class="tx-val" id="modal-tickets">1 ticket</span></div>
-      <div class="tx-detail"><span class="tx-key">AMOUNT</span><span class="tx-val purple" id="modal-amount">—</span></div>
-      <div class="tx-detail"><span class="tx-key">USD VALUE</span><span class="tx-val" id="modal-usd">~$5.00</span></div>
-      <div class="tx-detail"><span class="tx-key">TOKEN</span><span class="tx-val" id="modal-token">SOL</span></div>
-      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);margin-top:14px;margin-bottom:5px;letter-spacing:0.1em;">TREASURY WALLET:</div>
-      <div class="tx-addr"><span>4GaL7hAjFGaRPm51CBBhZZuidRs6huj3PC3Pu3Zkfun2</span></div>
-      <button class="modal-confirm" id="modalConfirmBtn" onclick="confirmPurchase()">SEND PAYMENT VIA WALLET →</button>
-      <div class="modal-note">
-        Your wallet will open to sign &amp; send the transaction.<br/>
-        Tickets assigned after payment confirms on-chain.
+  <!-- BUY FLOW MODAL -->
+  <div id="buyModal" class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h3>Buy Tickets</h3>
+    <p id="modalSub">Select a token and quantity to purchase.</p>
+    <div class="token-toggle">
+      <button class="token-btn active" id="btn-SOL" onclick="selectToken('SOL')">
+        <div class="t-symbol">◎ SOL</div>
+        <div class="t-price" id="sol-price-label">Loading...</div>
+      </button>
+      <button class="token-btn" id="btn-SKR" onclick="selectToken('SKR')">
+        <div class="t-symbol">◈ SKR</div>
+        <div class="t-price" id="skr-price-label">Loading...</div>
+      </button>
+    </div>
+    <div class="qty-row">
+      <div class="qty-info">
+        <div class="qty-title">Ticket Quantity</div>
+        <div class="qty-price">$5.00 per ticket — live price</div>
+      </div>
+      <div class="qty-controls">
+        <button class="qty-btn" onclick="changeQty(-1)">−</button>
+        <div class="qty-display" id="qtyDisplay">1</div>
+        <button class="qty-btn" onclick="changeQty(1)">+</button>
       </div>
     </div>
+    <p id="modal-tickets">1 ticket</p>
+    <p id="modal-amount">$5.00</p>
+    <p id="modal-usd">~$5.00</p>
+    <p id="modal-token">SOL</p>
+    <button class="modal-confirm" onclick="confirmPurchase()">SEND PAYMENT VIA WALLET →</button>
   </div>
 
-  <div class="toast" id="toast"></div>
+  <!-- SERVICE WORKER REGISTRATION -->
+  <script src="/solana-lotto/sw.js"></script>
 
-  <!-- Solana web3.js — SystemProgram, Connection, SPL instructions -->
-  <script src="https://unpkg.com/@solana/web3.js@1.98.0/lib/index.iife.min.js"></script>
-
-  <!-- Buffer polyfill + MWA SDK -->
-  <script type="module">
-    import { Buffer } from 'https://esm.sh/buffer@6.0.3';
-    window.Buffer = Buffer;
-    import('https://esm.sh/@solana-mobile/mobile-wallet-adapter-protocol-web3js@2.1.3')
-      .then(({ transact }) => { window._mwaTransact = transact; })
-      .catch(e => console.warn('MWA SDK unavailable:', e));
-  </script>
-
+  <!-- MAIN SCRIPT -->
   <script>
-    // ═══════════════════════════════════════════════════════════
-    // CONFIG
-    // ═══════════════════════════════════════════════════════════
-    const CONFIG = {
-      TREASURY:        '4GaL7hAjFGaRPm51CBBhZZuidRs6huj3PC3Pu3Zkfun2',
-      TICKET_USD:      5.00,
-      SKR_MINT:        'SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3',
-      SOL_MINT:        'So11111111111111111111111111111111111111112',
-      DRAW_DAY:        4,      // Thursday
-      DRAW_HOUR_UTC:   15,     // 15:00 UTC
-      ROUND:           1,
-      APP_NAME:        'Solana Lotto',
-      APP_URI:         'https://edward-sirofsky.github.io/solana-lotto',
-      APP_ICON:        'https://edward-sirofsky.github.io/solana-lotto/icons/icon-192.png',
-      RPC:             'https://mainnet.helius-rpc.com/?api-key=f5b91912-7d12-4e97-8604-496f51b72f34',
-      DRY_RUN:         false,
-    };
+    function waitForProvider(getProvider, timeoutMs = 3000) {
+      let provider;
+      const intervalId = setInterval(() => {
+        try {
+          provider = getProvider();
+          if (provider) clearInterval(intervalId);
+        } catch (_) {}
+      }, 100);
 
-    // ═══════════════════════════════════════════════════════════
-    // STATE
-    // ═══════════════════════════════════════════════════════════
-    let state = {
-      walletAddress:  null,
-      walletType:     null,   // 'mwa' | 'phantom' | 'backpack'
-      selectedToken:  'SOL',
-      qty:            1,
-      prices:         { SOL: 130, SKR: 0.018 },
-      ticketsSold:    0,
-      myTickets:      [],
-      isMobile:       /Android|iPhone|iPad/i.test(navigator.userAgent),
-    };
-
-    // ═══════════════════════════════════════════════════════════
-    // MOBILE WALLET ADAPTER (MWA) — Seed Vault support
-    // Uses the @solana-mobile/wallet-standard-mobile detection
-    // pattern. On Android, fires a solana-wallet:// intent which
-    // the Seed Vault / Phantom Mobile / any MWA wallet catches.
-    // ═══════════════════════════════════════════════════════════
-
-    function isMWAAvailable() {
-      // We're inside a TWA on Android, OR browser on Android
-      return state.isMobile && /Android/i.test(navigator.userAgent);
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          if (!provider) reject(new Error('Provider not found'));
+          else resolve(provider);
+        }, timeoutMs);
+      });
     }
 
-    async function connectMWA() {
-      if (!window._mwaTransact) throw new Error('no_wallet_standard');
-      showMWAOverlay('CONNECTING TO WALLET\nApprove in your wallet...');
-      try {
-        const address = await window._mwaTransact(async (wallet) => {
-          const { accounts } = await wallet.authorize({
-            cluster: 'mainnet-beta',
-            identity: {
-              name: CONFIG.APP_NAME,
-              uri:  CONFIG.APP_URI,
-              icon: CONFIG.APP_ICON,
-            }
-          });
-          return accounts[0].address.toString();
-        });
-        hideMWAOverlay();
-        return { address, type: 'mwa' };
-      } catch(e) {
-        hideMWAOverlay();
-        throw e;
-      }
-    }
-
-    function showMWAOverlay(msg) {
-      document.getElementById('mwaText').innerHTML = msg.replace('\n','<br/>');
-      document.getElementById('mwaOverlay').classList.add('show');
-    }
-    function hideMWAOverlay() {
-      document.getElementById('mwaOverlay').classList.remove('show');
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    // WALLET CONNECTION — Seed Vault first, then fallbacks
-    // ═══════════════════════════════════════════════════════════
-    function handleConnectBtn(e) {
-      if (state.walletAddress) {
-        if (e) e.stopPropagation();
-        const dd = document.getElementById('walletDropdown');
-        dd.classList.toggle('open');
-        return;
-      }
-      handleConnect();
-    }
-    function copyWalletAddress() {
-      document.getElementById('walletDropdown').classList.remove('open');
-      navigator.clipboard?.writeText(state.walletAddress).then(() => {
-        showToast('Address copied', 'info');
-      }).catch(() => showToast('Copy failed', 'error'));
-    }
-    function disconnectWallet() {
-      document.getElementById('walletDropdown').classList.remove('open');
-      const btn = document.getElementById('connectBtn');
-      state.walletAddress = null;
-      state.walletType = null;
-      state.myTickets = [];
-      btn.textContent = 'CONNECT';
-      btn.classList.remove('connected');
-      btn.disabled = false;
-      document.getElementById('walletMsg').style.display = 'block';
-      document.getElementById('walletBar').classList.remove('show');
-      showToast('Wallet disconnected', 'info');
-      showNoWalletModal();
-    }
-    document.addEventListener('click', function(e) {
-      const wrap = document.querySelector('.wallet-menu-wrap');
-      if (wrap && !wrap.contains(e.target)) {
-        document.getElementById('walletDropdown').classList.remove('open');
-      }
-    });
-
-    async function handleConnect() {
-      const btn = document.getElementById('connectBtn');
-
-      if (state.walletAddress) return;
-
-      btn.textContent = 'CONNECTING...';
-      btn.disabled = true;
-
-      try {
-        let result = null;
-
-        // ── 1. Try injected wallets (Phantom ext / Phantom mobile browser / Backpack) ──
-        const provider = window.phantom?.solana || window.backpack?.solana;
-        if (provider) {
-          try {
-            const resp = await provider.connect();
-            result = {
-              address: resp.publicKey.toString(),
-              type: provider === window.phantom?.solana ? 'phantom' : 'backpack'
-            };
-          } catch(e) {
-            // User explicitly dismissed the wallet prompt → show toast and stop
-            const userRejected = e?.code === 4001 || /reject|denied|cancel/i.test(e?.message || '');
-            if (userRejected) {
-              btn.textContent = 'CONNECT';
-              btn.disabled = false;
-              showToast('Connection rejected', 'error');
-              return;
-            }
-            // Provider exists but errored (not a real rejection) → fall through to modal
-          }
-        }
-
-        // ── 2. Try Wallet Standard / MWA (Seed Vault in TWA on Seeker) ──────
-        if (!result && isMWAAvailable()) {
-          try {
-            result = await connectMWA();
-          } catch(e) {
-            console.log('Wallet Standard/MWA failed:', e.message);
-          }
-        }
-
-        // ── 3. Legacy window.solana fallback ─────────────────────────────────
-        if (!result && window.solana) {
-          try {
-            const resp = await window.solana.connect();
-            result = { address: resp.publicKey.toString(), type: 'injected' };
-          } catch(e) { console.log('Legacy solana failed:', e.message); }
-        }
-
-        // ── 4. No wallet found — show options modal ───────────────────────────
-        if (!result) {
-          showNoWalletModal();
-          btn.textContent = 'CONNECT';
-          btn.disabled = false;
-          return;
-        }
-
-        // ── Connected ────────────────────────────────────────
-        state.walletAddress = result.address;
-        state.walletType    = result.type;
-        const short = result.address.slice(0,4) + '...' + result.address.slice(-4);
-        btn.textContent = short;
-        btn.classList.add('connected');
-        btn.disabled = false;
-        document.getElementById('walletMsg').style.display = 'none';
-
-        // Show wallet bar on mobile
-        const bar = document.getElementById('walletBar');
-        bar.textContent = `◈ ${result.type === 'mwa' ? 'SEED VAULT' : result.type.toUpperCase()} · ${short}`;
-        bar.classList.add('show');
-
-        showToast(`Connected: ${short}`, 'success');
-
-      } catch(e) {
-        btn.textContent = 'CONNECT';
-        btn.disabled = false;
-        const userRejected = e?.code === 4001 || /reject|denied|cancel/i.test(e?.message || '');
-        if (userRejected || e.message === 'Wallet connection timed out') {
-          showToast(e.message === 'Wallet connection timed out' ? 'Wallet timed out — try again' : 'Connection rejected', 'error');
-        } else {
-          showNoWalletModal();
-        }
-      }
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    // PRICES — Jupiter API
-    // ═══════════════════════════════════════════════════════════
-    async function fetchPrices() {
-      try {
-        const solRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
-        const solData = await solRes.json();
-        if (solData?.solana?.usd) state.prices.SOL = parseFloat(solData.solana.usd);
-      } catch(e) { console.log('SOL price failed:', e.message); }
-      try {
-        const skrRes = await fetch(`https://api.coingecko.com/api/v3/simple/token_price/solana?contract_addresses=${CONFIG.SKR_MINT}&vs_currencies=usd`);
-        const skrData = await skrRes.json();
-        const skrPrice = skrData?.[CONFIG.SKR_MINT.toLowerCase()]?.usd || skrData?.[CONFIG.SKR_MINT]?.usd;
-        if (skrPrice) state.prices.SKR = parseFloat(skrPrice);
-      } catch(e) { console.log('SKR price failed:', e.message); }
-      const skrAmt = CONFIG.TICKET_USD / state.prices.SKR;
-      const solAmt = CONFIG.TICKET_USD / state.prices.SOL;
-      document.getElementById('sol-price-label').textContent = `$${state.prices.SOL.toFixed(2)} · ${solAmt.toFixed(4)}/ticket`;
-      document.getElementById('skr-price-label').textContent = `$${state.prices.SKR.toFixed(4)} · ${Math.round(skrAmt).toLocaleString()}/ticket`;
-      updateBuyButton();
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    // POOL
-    // ═══════════════════════════════════════════════════════════
-    function updatePool() {
-      const jackpotUSD = state.ticketsSold * CONFIG.TICKET_USD * 0.80;
-      document.getElementById('jackpotUSD').textContent =
-        jackpotUSD > 0 ? jackpotUSD.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '0.00';
-      const skrEq = state.prices.SKR > 0 ? Math.round(jackpotUSD / state.prices.SKR).toLocaleString() : '—';
-      const solEq = state.prices.SOL > 0 ? (jackpotUSD / state.prices.SOL).toFixed(3) : '—';
-      document.getElementById('jackpotTokens').textContent = `≈ ${skrEq} SKR  /  ${solEq} SOL`;
-      document.getElementById('ticketsSold').textContent = state.ticketsSold;
-      document.getElementById('myTickets').textContent = state.myTickets.length;
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    // COUNTDOWN — Thursday 15:00 UTC
-    // ═══════════════════════════════════════════════════════════
-    function getNextDraw() {
-      const now = new Date(), d = new Date(now);
-      d.setUTCHours(CONFIG.DRAW_HOUR_UTC, 0, 0, 0);
-      let days = (CONFIG.DRAW_DAY - now.getUTCDay() + 7) % 7;
-      if (days === 0 && now >= d) days = 7;
-      d.setUTCDate(d.getUTCDate() + days);
-      return d;
-    }
-    function updateCountdown() {
-      const diff = getNextDraw() - new Date();
-      if (diff <= 0) { updateCountdown(); return; }
-      const dd = Math.floor(diff/86400000), hh = Math.floor((diff%86400000)/3600000),
-            mm = Math.floor((diff%3600000)/60000), ss = Math.floor((diff%60000)/1000);
-      const set = (id,v) => {
-        const el=document.getElementById(id), p=String(v).padStart(2,'0');
-        if(el.textContent!==p){el.textContent=p;el.classList.remove('tick');void el.offsetWidth;el.classList.add('tick');}
-      };
-      set('cd-d',dd);set('cd-h',hh);set('cd-m',mm);set('cd-s',ss);
-      document.getElementById('drawDate').textContent = getNextDraw().toLocaleDateString('en-GB',{day:'2-digit',month:'short',timeZone:'UTC'});
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    // TICKET NUMBERS
-    // ═══════════════════════════════════════════════════════════
-    function genTicket(){let n='';for(let i=0;i<6;i++)n+=Math.floor(Math.random()*10);return n.split('').join('-');}
-    function renderTickets(){
-      const g=document.getElementById('ticketGrid');g.innerHTML='';
-      for(let i=0;i<state.qty;i++){const d=document.createElement('div');d.className='ticket-item';d.textContent=`#${genTicket()}`;g.appendChild(d);}
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    // CONTROLS
-    // ═══════════════════════════════════════════════════════════
-    function selectToken(t){
-      state.selectedToken=t;
-      document.getElementById('btn-SOL').classList.toggle('active',t==='SOL');
-      document.getElementById('btn-SKR').classList.toggle('active',t==='SKR');
-      updateBuyButton();
-    }
-    function changeQty(d){
-      state.qty=Math.max(1,Math.min(100,state.qty+d));
-      document.getElementById('qtyDisplay').textContent=state.qty;
-      updateBuyButton();renderTickets();
-    }
-    function updateBuyButton(){
-      const p=state.prices[state.selectedToken],pt=p>0?CONFIG.TICKET_USD/p:0,tot=pt*state.qty;
-      const sym=state.selectedToken,dp=sym==='SKR'?0:4;
-      document.getElementById('buyBtnCost').textContent=`${state.qty} TICKET${state.qty>1?'S':''} — ${tot.toFixed(dp)} ${sym}`;
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    // BUY FLOW
-    // ═══════════════════════════════════════════════════════════
-    function handleBuy(){
-      if(!state.walletAddress){showToast('Connect your wallet first','error');return;}
-      const p=state.prices[state.selectedToken],pt=p>0?CONFIG.TICKET_USD/p:0,tot=pt*state.qty;
-      const sym=state.selectedToken,dp=sym==='SKR'?0:4;
-      document.getElementById('modal-tickets').textContent=`${state.qty} ticket${state.qty>1?'s':''}`;
-      document.getElementById('modal-amount').textContent=`${tot.toFixed(dp)} ${sym}`;
-      document.getElementById('modal-usd').textContent=`~$${(state.qty*CONFIG.TICKET_USD).toFixed(2)}`;
-      document.getElementById('modal-token').textContent=sym;
-      document.getElementById('modalSub').textContent=`Send ${tot.toFixed(dp)} ${sym} to treasury`;
-      document.getElementById('buyModal').classList.add('open');
-    }
-    function closeModal(){document.getElementById('buyModal').classList.remove('open');}
-
-    // ── NO-WALLET MODAL ──────────────────────────────────────
-    function showNoWalletModal() {
-      document.getElementById('noWalletModal').classList.add('open');
-    }
-    function closeNoWalletModal() {
-      document.getElementById('noWalletModal').classList.remove('open');
-    }
-    async function trySeedVault() {
-      closeNoWalletModal();
-      const btn = document.getElementById('connectBtn');
-      btn.textContent = 'CONNECTING...';
-      btn.disabled = true;
-      try {
-        const result = await connectMWA();
-        state.walletAddress = result.address;
-        state.walletType    = result.type;
-        const short = result.address.slice(0,4) + '...' + result.address.slice(-4);
-        btn.textContent = short;
-        btn.classList.add('connected');
-        btn.disabled = false;
-        document.getElementById('walletMsg').style.display = 'none';
-        const bar = document.getElementById('walletBar');
-        bar.textContent = `◈ SEED VAULT · ${short}`;
-        bar.classList.add('show');
-        showToast(`Connected: ${short}`, 'success');
-      } catch(e) {
-        btn.textContent = 'CONNECT';
-        btn.disabled = false;
-        showToast('Seed Vault not detected — open as TWA or try Phantom', 'error');
-      }
-    }
-    document.getElementById('noWalletModal').addEventListener('click', function(e){
-      if(e.target === this) closeNoWalletModal();
-    });
-    function trySolflare() {
-      closeNoWalletModal();
-      const isAndroid = /Android/i.test(navigator.userAgent);
-      if (isAndroid) {
-        window.location.href = 'https://solflare.com/ul/v1/browse/https%3A%2F%2Fedward-sirofsky.github.io%2Fsolana-lotto%2F';
-      } else {
-        const provider = window.solflare;
-        if (provider) {
-          provider.connect().then(resp => {
-            state.walletAddress = resp.publicKey.toString();
-            state.walletType    = 'solflare';
-            const short = state.walletAddress.slice(0,4) + '...' + state.walletAddress.slice(-4);
-            const btn = document.getElementById('connectBtn');
-            btn.textContent = short;
-            btn.classList.add('connected');
-            btn.disabled = false;
-            document.getElementById('walletMsg').style.display = 'none';
-            const bar = document.getElementById('walletBar');
-            bar.textContent = '◈ SOLFLARE · ' + short;
-            bar.classList.add('show');
-            showToast('Solflare connected: ' + short, 'success');
-          }).catch(() => showToast('Solflare connection rejected', 'error'));
-        } else {
-          window.open('https://solflare.com', '_blank');
-          showToast('Install Solflare extension then try again', 'info');
-        }
-      }
-    }
     function tryPhantom() {
       closeNoWalletModal();
-      const provider = window.phantom?.solana;
-      if (provider) {
-        provider.connect().then(resp => {
-          state.walletAddress = resp.publicKey.toString();
+      const isAndroid = /Android/i.test(navigator.userAgent);
+
+      if (isAndroid) {
+        waitForProvider(() => window.phantom?.solana, 3000).then(async provider => {
+          if (!provider) {
+            showToast('Install Phantom from the Solana dApp Store to connect on mobile', 'info');
+            return;
+          }
+
+          const result = await provider.connect();
+          state.walletAddress = result.publicKey.toString();
           state.walletType    = 'phantom';
           const short = state.walletAddress.slice(0,4) + '...' + state.walletAddress.slice(-4);
           const btn = document.getElementById('connectBtn');
@@ -1005,15 +664,45 @@
           const rejected = e?.code === 4001 || /reject|denied|cancel/i.test(e?.message || '');
           showToast(rejected ? 'Connection rejected' : 'Phantom not available', 'error');
         });
-      } else if (/Android/i.test(navigator.userAgent)) {
-        window.location.href = 'https://phantom.app/ul/v1/browse/https%3A%2F%2Fedward-sirofsky.github.io%2Fsolana-lotto%2F';
       } else {
-        window.open('https://phantom.app', '_blank');
-        showToast('Install Phantom then try again', 'info');
+        window.location.href = 'https://phantom.app/ul/v1/browse/https%3A%2F%2Fedward-sirofsky.github.io%2Fsolana-lotto%2F';
       }
     }
 
-    async function confirmPurchase(){
+    function trySolflare() {
+      closeNoWalletModal();
+      const isAndroid = /Android/i.test(navigator.userAgent);
+
+      if (isAndroid) {
+        waitForProvider(() => window.solflare, 3000).then(async provider => {
+          if (!provider) {
+            showToast('Install Solflare from the Solana dApp Store to connect on mobile', 'info');
+            return;
+          }
+
+          const result = await provider.connect();
+          state.walletAddress = result.publicKey.toString();
+          state.walletType    = 'solflare';
+          const short = state.walletAddress.slice(0,4) + '...' + state.walletAddress.slice(-4);
+          const btn = document.getElementById('connectBtn');
+          btn.textContent = short;
+          btn.classList.add('connected');
+          btn.disabled = false;
+          document.getElementById('walletMsg').style.display = 'none';
+          const bar = document.getElementById('walletBar');
+          bar.textContent = '◈ SOLFLARE · ' + short;
+          bar.classList.add('show');
+          showToast('Solflare connected: ' + short, 'success');
+        }).catch(e => {
+          const rejected = e?.code === 4001 || /reject|denied|cancel/i.test(e?.message || '');
+          showToast(rejected ? 'Connection rejected' : 'Solflare not available', 'error');
+        });
+      } else {
+        window.location.href = 'https://solflare.com/ul/v1/browse/https%3A%2F%2Fedward-sirofsky.github.io%2Fsolana-lotto%2F';
+      }
+    }
+
+    async function confirmPurchase() {
       const btn = document.getElementById('modalConfirmBtn');
 
       if (CONFIG.DRY_RUN) {
@@ -1065,7 +754,7 @@
           try {
             const mintInfo = await conn.getParsedAccountInfo(mintPubkey);
             decimals = mintInfo.value?.data?.parsed?.info?.decimals ?? 9;
-          } catch(_) {}
+          } catch (_) {}
 
           const amount = Math.round(tot * Math.pow(10, decimals));
 
@@ -1151,46 +840,25 @@
       }
     }
 
-    document.getElementById('buyModal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+    document.getElementById('buyModal').addEventListener('click', function(e){if(e.target===this)closeModal();});
 
-    // ═══════════════════════════════════════════════════════════
-    // WINNERS — add entries here after each draw
-    // ═══════════════════════════════════════════════════════════
-    const winnersData = [
-      // { round:1, wallet:'7xKX...AsU', matches:3, prize:'$45.20' },
-    ];
-    function renderWinners(){
-      const tbody=document.getElementById('winnersBody');
-      if(!winnersData.length) return;
-      tbody.innerHTML='';
-      winnersData.slice().reverse().forEach(w=>{
-        const dots=Array.from({length:6},(_,i)=>`<span class="dot${i<w.matches?' hit':''}"></span>`).join('');
-        tbody.innerHTML+=`<tr><td><span class="round-tag">#${String(w.round).padStart(3,'0')}</span></td><td>${w.wallet}</td><td><div class="match-dots">${dots}</div></td><td><span class="prize-tag">${w.prize}</span></td></tr>`;
+    // ── NO-WALLET MODAL ──────────────────────────────────────
+    function showNoWalletModal() {
+      document.getElementById('noWalletModal').classList.add('open');
+    }
+    function closeNoWalletModal() {
+      document.getElementById('noWalletModal').classList.remove('open');
+    }
+
+    // ── SERVICE WORKER REGISTRATION ───────────────────────────
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/solana-lotto/sw.js', { scope: '/solana-lotto/', updateViaCache: 'none' })
+          .catch(e => console.log('SW reg failed:', e));
       });
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // TOAST
-    // ═══════════════════════════════════════════════════════════
-    let toastTimer;
-    function showToast(msg,type='info'){
-      const t=document.getElementById('toast');t.textContent=msg;t.className=`toast ${type} show`;
-      clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3800);
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    // SERVICE WORKER REGISTRATION
-    // ═══════════════════════════════════════════════════════════
-    if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>{
-        navigator.serviceWorker.register('/solana-lotto/sw.js',{scope:'/solana-lotto/',updateViaCache:'none'})
-          .catch(e=>console.log('SW reg failed:',e));
-      });
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    // INIT
-    // ═══════════════════════════════════════════════════════════
+    // ── INIT ─────────────────────────────────────────────────
     fetchPrices(); setInterval(fetchPrices, 60000);
     setInterval(updateCountdown, 1000); updateCountdown();
     renderTickets(); renderWinners(); updatePool(); updateBuyButton();
