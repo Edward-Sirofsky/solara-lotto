@@ -607,13 +607,15 @@
   <!-- Solana web3.js — SystemProgram, Connection, SPL instructions -->
   <script src="https://unpkg.com/@solana/web3.js@1.98.0/lib/index.iife.min.js"></script>
 
-  <!-- Buffer polyfill + MWA SDK -->
+  <!-- Buffer polyfill + MWA SDK (skip MWA JS SDK inside native APK — native bridge handles it) -->
   <script type="module">
     import { Buffer } from 'https://esm.sh/buffer@6.0.3';
     window.Buffer = Buffer;
-    import('https://esm.sh/@solana-mobile/mobile-wallet-adapter-protocol-web3js@2.1.3')
-      .then(({ transact }) => { window._mwaTransact = transact; })
-      .catch(e => console.warn('MWA SDK unavailable:', e));
+    if (!navigator.userAgent.includes('SolanaLottoApp')) {
+      import('https://esm.sh/@solana-mobile/mobile-wallet-adapter-protocol-web3js@2.1.3')
+        .then(({ transact }) => { window._mwaTransact = transact; })
+        .catch(e => console.warn('MWA SDK unavailable:', e));
+    }
   </script>
 
   <script>
@@ -638,6 +640,8 @@
     // ═══════════════════════════════════════════════════════════
     // STATE
     // ═══════════════════════════════════════════════════════════
+    const IS_NATIVE_APP = navigator.userAgent.includes('SolanaLottoApp');
+
     let state = {
       walletAddress:  null,
       walletType:     null,   // 'mwa' | 'phantom' | 'backpack'
@@ -743,38 +747,57 @@
         let result = null;
 
         // ── 0. Native Android bridge (WebView APK) ─────────────────────────
-        if (window.connectWallet && window._nativeBridgeReady) {
-          try {
+        if (IS_NATIVE_APP) {
+          console.log('[NativeBridge] IS_NATIVE_APP=true, bridgeReady=' + !!window._nativeBridgeReady);
+          if (window.connectWallet && window._nativeBridgeReady) {
             result = await window.connectWallet();
-          } catch(e) {
-            console.log('Native bridge connect failed:', e.message);
+            console.log('[NativeBridge] connect result:', JSON.stringify(result));
+          } else {
+            // Bridge not injected yet — wait briefly and retry once
+            await new Promise(r => setTimeout(r, 500));
+            console.log('[NativeBridge] retry: bridgeReady=' + !!window._nativeBridgeReady);
+            if (window.connectWallet && window._nativeBridgeReady) {
+              result = await window.connectWallet();
+            } else {
+              showToast('Native bridge not ready — restart the app', 'error');
+              btn.textContent = 'CONNECT';
+              btn.disabled = false;
+              return;
+            }
+          }
+          // In native app, ONLY use the native bridge — never fall through
+          if (!result) {
+            showToast('Wallet connection failed — try again', 'error');
+            btn.textContent = 'CONNECT';
+            btn.disabled = false;
+            return;
           }
         }
 
         // ── 1. Try injected wallets (Phantom ext / Phantom mobile browser / Backpack) ──
-        const provider = window.phantom?.solana || window.backpack?.solana;
-        if (provider) {
-          try {
-            const resp = await provider.connect();
-            result = {
-              address: resp.publicKey.toString(),
-              type: provider === window.phantom?.solana ? 'phantom' : 'backpack'
-            };
-          } catch(e) {
-            // User explicitly dismissed the wallet prompt → show toast and stop
-            const userRejected = e?.code === 4001 || /reject|denied|cancel/i.test(e?.message || '');
-            if (userRejected) {
-              btn.textContent = 'CONNECT';
-              btn.disabled = false;
-              showToast('Connection rejected', 'error');
-              return;
+        if (!result) {
+          const provider = window.phantom?.solana || window.backpack?.solana;
+          if (provider) {
+            try {
+              const resp = await provider.connect();
+              result = {
+                address: resp.publicKey.toString(),
+                type: provider === window.phantom?.solana ? 'phantom' : 'backpack'
+              };
+            } catch(e) {
+              const userRejected = e?.code === 4001 || /reject|denied|cancel/i.test(e?.message || '');
+              if (userRejected) {
+                btn.textContent = 'CONNECT';
+                btn.disabled = false;
+                showToast('Connection rejected', 'error');
+                return;
+              }
             }
-            // Provider exists but errored (not a real rejection) → fall through to modal
           }
         }
 
         // ── 2. Try Wallet Standard / MWA (Seed Vault in TWA on Seeker) ──────
-        if (!result && isMWAAvailable()) {
+        if (!result && !IS_NATIVE_APP && isMWAAvailable()) {
           try {
             result = await connectMWA();
           } catch(e) {
@@ -790,9 +813,9 @@
           } catch(e) { console.log('Legacy solana failed:', e.message); }
         }
 
-        // ── 4. No wallet found — show options modal ───────────────────────────
+        // ── 4. No wallet found — show options modal (never in native app) ───
         if (!result) {
-          showNoWalletModal();
+          if (!IS_NATIVE_APP) showNoWalletModal();
           btn.textContent = 'CONNECT';
           btn.disabled = false;
           return;
@@ -815,11 +838,14 @@
         showToast(`Connected: ${short}`, 'success');
 
       } catch(e) {
+        console.error('[handleConnect] error:', e.message);
         btn.textContent = 'CONNECT';
         btn.disabled = false;
         const userRejected = e?.code === 4001 || /reject|denied|cancel/i.test(e?.message || '');
         if (userRejected || e.message === 'Wallet connection timed out') {
           showToast(e.message === 'Wallet connection timed out' ? 'Wallet timed out — try again' : 'Connection rejected', 'error');
+        } else if (IS_NATIVE_APP) {
+          showToast('Connection failed: ' + (e.message || 'unknown error').slice(0, 60), 'error');
         } else {
           showNoWalletModal();
         }
@@ -1121,11 +1147,28 @@
         const wt = state.walletType;
 
         if (window.signAndSendTransaction && window._nativeBridgeReady) {
-          // Native Android WebView bridge
+          // Native Android WebView bridge — sign only, then submit via RPC
           const txBytes = tx.serialize({ requireAllSignatures: false, verifySignatures: false });
           const txBase64 = btoa(String.fromCharCode(...txBytes));
           const res = await window.signAndSendTransaction(txBase64);
-          signature = res.signature;
+          if (res.signedTx) {
+            // Wallet signed — submit via RPC ourselves
+            btn.textContent = 'SUBMITTING...';
+            const sendResp = await fetch(CONFIG.RPC, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                jsonrpc: '2.0', id: 1,
+                method: 'sendTransaction',
+                params: [res.signedTx, { encoding: 'base64', skipPreflight: true }]
+              })
+            });
+            const sendJson = await sendResp.json();
+            if (sendJson.error) throw new Error(sendJson.error.message);
+            signature = sendJson.result;
+          } else {
+            signature = res.signature;
+          }
         } else if (wt === 'mwa') {
           signature = await window._mwaTransact(async (wallet) => {
             await wallet.authorize({
