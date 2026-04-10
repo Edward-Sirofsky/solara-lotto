@@ -1151,24 +1151,7 @@
           const txBytes = tx.serialize({ requireAllSignatures: false, verifySignatures: false });
           const txBase64 = btoa(String.fromCharCode(...txBytes));
           const res = await window.signAndSendTransaction(txBase64);
-          if (res.signedTx) {
-            // Wallet signed — submit via RPC ourselves
-            btn.textContent = 'SUBMITTING...';
-            const sendResp = await fetch(CONFIG.RPC, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                jsonrpc: '2.0', id: 1,
-                method: 'sendTransaction',
-                params: [res.signedTx, { encoding: 'base64', skipPreflight: true }]
-              })
-            });
-            const sendJson = await sendResp.json();
-            if (sendJson.error) throw new Error(sendJson.error.message);
-            signature = sendJson.result;
-          } else {
-            signature = res.signature;
-          }
+          signature = res.signature;
         } else if (wt === 'mwa') {
           signature = await window._mwaTransact(async (wallet) => {
             await wallet.authorize({
