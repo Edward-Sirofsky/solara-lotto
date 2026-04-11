@@ -1078,6 +1078,68 @@
                 TransactionInstruction, LAMPORTS_PER_SOL } = solanaWeb3;
 
         const conn = new Connection(CONFIG.RPC, 'confirmed');
+
+        let signature;
+
+        // ── Native APK: single-session purchase (no separate connect needed) ──
+        if (IS_NATIVE_APP && window.nativePurchase && window._nativeBridgeReady) {
+          btn.textContent = 'APPROVE IN WALLET...';
+
+          let lamports;
+          if (sym === 'SOL') {
+            lamports = Math.round(tot * LAMPORTS_PER_SOL);
+          } else {
+            // SKR — assume 9 decimals (matches on-chain)
+            lamports = Math.round(tot * 1e9);
+          }
+
+          const res = await window.nativePurchase(sym, lamports);
+
+          // Set wallet state from response
+          if (res.address && !state.walletAddress) {
+            state.walletAddress = res.address;
+            state.walletType = 'mwa';
+            const short = res.address.slice(0,4) + '...' + res.address.slice(-4);
+            const connectBtn = document.getElementById('connectBtn');
+            connectBtn.textContent = short;
+            connectBtn.classList.add('connected');
+            document.getElementById('walletMsg').style.display = 'none';
+            const bar = document.getElementById('walletBar');
+            bar.textContent = '◈ WALLET · ' + short;
+            bar.classList.add('show');
+          }
+
+          // Submit signed tx via RPC
+          btn.textContent = 'SUBMITTING...';
+          const sendResp = await fetch(CONFIG.RPC, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0', id: 1,
+              method: 'sendTransaction',
+              params: [res.signedTx, { encoding: 'base64', skipPreflight: true }]
+            })
+          });
+          const sendJson = await sendResp.json();
+          if (sendJson.error) throw new Error(sendJson.error.message);
+          signature = sendJson.result;
+
+          // Confirm on-chain
+          btn.textContent = 'CONFIRMING...';
+          const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash();
+          await conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
+
+          for (let i = 0; i < state.qty; i++) state.myTickets.push(genTicket());
+          state.ticketsSold += state.qty;
+          updatePool();
+          closeModal();
+          showToast(state.qty + ' ticket' + (state.qty > 1 ? 's' : '') + ' confirmed on-chain!', 'success');
+          btn.textContent = 'SEND PAYMENT VIA WALLET →';
+          btn.disabled = false;
+          return;
+        }
+
+        // ── Desktop / browser flow (unchanged) ──
         const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash();
 
         const fromPubkey = new PublicKey(state.walletAddress);
@@ -1111,21 +1173,19 @@
             [toPubkey.toBytes(), TOKEN_PROG.toBytes(), mintPubkey.toBytes()], ATA_PROG
           );
 
-          // Create treasury ATA if needed (idempotent — no-op if already exists)
           tx.add(new TransactionInstruction({
             programId: ATA_PROG,
             keys: [
-              { pubkey: fromPubkey,             isSigner: true,  isWritable: true  }, // payer
-              { pubkey: toATA,                  isSigner: false, isWritable: true  }, // ATA to create
-              { pubkey: toPubkey,               isSigner: false, isWritable: false }, // ATA owner (treasury)
-              { pubkey: mintPubkey,             isSigner: false, isWritable: false }, // mint
-              { pubkey: SystemProgram.programId,isSigner: false, isWritable: false }, // system program
-              { pubkey: TOKEN_PROG,             isSigner: false, isWritable: false }, // token program
+              { pubkey: fromPubkey,             isSigner: true,  isWritable: true  },
+              { pubkey: toATA,                  isSigner: false, isWritable: true  },
+              { pubkey: toPubkey,               isSigner: false, isWritable: false },
+              { pubkey: mintPubkey,             isSigner: false, isWritable: false },
+              { pubkey: SystemProgram.programId,isSigner: false, isWritable: false },
+              { pubkey: TOKEN_PROG,             isSigner: false, isWritable: false },
             ],
-            data: new Uint8Array([1]), // 1 = CreateIdempotent
+            data: new Uint8Array([1]),
           }));
 
-          // SPL Transfer instruction: byte 0 = discriminator 3, bytes 1-8 = u64 LE amount
           const data = new Uint8Array(9);
           data[0] = 3;
           new DataView(data.buffer).setBigUint64(1, BigInt(amount), true);
@@ -1143,32 +1203,9 @@
 
         btn.textContent = 'APPROVE IN WALLET...';
 
-        let signature;
         const wt = state.walletType;
 
-        if (window.signAndSendTransaction && window._nativeBridgeReady) {
-          // Native Android WebView bridge — sign only, then submit via RPC
-          const txBytes = tx.serialize({ requireAllSignatures: false, verifySignatures: false });
-          const txBase64 = btoa(String.fromCharCode(...txBytes));
-          const res = await window.signAndSendTransaction(txBase64);
-          if (res.signedTx) {
-            btn.textContent = 'SUBMITTING...';
-            const sendResp = await fetch(CONFIG.RPC, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                jsonrpc: '2.0', id: 1,
-                method: 'sendTransaction',
-                params: [res.signedTx, { encoding: 'base64', skipPreflight: true }]
-              })
-            });
-            const sendJson = await sendResp.json();
-            if (sendJson.error) throw new Error(sendJson.error.message);
-            signature = sendJson.result;
-          } else {
-            signature = res.signature;
-          }
-        } else if (wt === 'mwa') {
+        if (wt === 'mwa') {
           signature = await window._mwaTransact(async (wallet) => {
             await wallet.authorize({
               cluster: 'mainnet-beta',
