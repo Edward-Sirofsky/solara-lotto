@@ -1,12 +1,12 @@
 {
-  "name": "Solana Lotto",
-  "short_name": "Solana Lotto",
-  "description": "Weekly on-chain lottery for the Solana ecosystem. Buy tickets with SOL or SKR. Live draws every Thursday on BlockDesk News.",
+  "name": "SOLARA",
+  "short_name": "SOLARA",
+  "description": "Lottery on Solana",
   "start_url": "/solana-lotto/",
   "scope": "/solana-lotto/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#000000",
+  "background_color": "#0a0a1a",
   "theme_color": "#7B2FFF",
   "lang": "en-US",
   "categories": ["finance", "games"],
@@ -41,7 +41,7 @@
       "src": "screenshots/screen1.png",
       "sizes": "390x844",
       "type": "image/png",
-      "label": "Solana Lotto home screen"
+      "label": "SOLARA home screen"
     }
   ]
 }

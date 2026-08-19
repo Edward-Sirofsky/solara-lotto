@@ -1,0 +1,71 @@
+# ─── Signing keys & secrets — NEVER commit ────────────────────────────
+# android.keystore signs the SOLARA APK. Publishing it would let anyone
+# ship a build Android accepts as a legitimate update to this app.
+*.keystore
+*.jks
+*.p12
+*.pem
+*.key
+android.keystore
+key.properties
+keystore.properties
+secrets.properties
+local.properties
+.env
+.env.*
+
+# ─── Build outputs ────────────────────────────────────────────────────
+*.apk
+*.aab
+*.idsig
+*.ap_
+*.dex
+build/
+.gradle/
+manifest-checksum.txt
+
+# ─── Bubblewrap / TWA scaffolding ─────────────────────────────────────
+# This repo publishes the web app to GitHub Pages. The Android wrapper
+# lives in ~/solana-lotto-android/, so none of the leftover TWA build
+# files below belong in the deployed site.
+app/
+gradle/
+gradlew
+gradlew.bat
+build.gradle
+settings.gradle
+gradle.properties
+twa-manifest.json
+store_icon.png
+
+# ─── Dependencies ─────────────────────────────────────────────────────
+# NOTE: /vendor is deliberately NOT ignored — solana-web3.iife.min.js and
+# buffer.min.js are vendored on purpose so the site has no CDN dependency.
+node_modules/
+package-lock.json
+yarn.lock
+bower_components/
+
+# ─── Tooling & editor cruft ───────────────────────────────────────────
+.aider*
+.claude/
+.vscode/
+.idea/
+*.iml
+*.swp
+*~
+
+# ─── OS junk ──────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+desktop.ini
+
+# ─── Local scratch ────────────────────────────────────────────────────
+_vendortest.html
+*.log
+*.bak
+*.orig
+# Dated screenshots dropped into the repo root by macOS/Android capture
+[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] *.jpg

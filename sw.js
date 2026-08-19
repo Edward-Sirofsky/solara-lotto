@@ -1,18 +1,33 @@
-// Solana Lotto — Service Worker
-// Caches the shell for offline/fast load, always fetches fresh content
+// SOLARA — Service Worker
+// Caches the app shell for offline/fast load, always prefers fresh content.
+//
+// Not used inside the Android APK: that build serves the app from bundled assets
+// on a different origin, where this scope doesn't exist. index.html skips
+// registration when running natively.
 
-const CACHE = 'solana-lotto-v3';
+// Bump this whenever the shell changes — activate() deletes every other cache,
+// which is what evicts the pre-SOLARA assets from returning visitors.
+const CACHE = 'solara-v2';
 const SHELL = [
   '/solana-lotto/',
   '/solana-lotto/index.html',
   '/solana-lotto/manifest.json',
+  '/solana-lotto/vendor/buffer.min.js',
+  '/solana-lotto/vendor/solana-web3.iife.min.js',
   '/solana-lotto/icons/icon-192.png',
   '/solana-lotto/icons/icon-512.png',
+  '/solana-lotto/assets/solara-coin.png',
+  '/solana-lotto/assets/solara-wordmark-only.png',
+  '/solana-lotto/assets/solara-banner.jpg',
 ];
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())
+    // addAll() rejects the whole install if any single entry 404s, which would
+    // leave the SW permanently uninstalled. Cache what we can and move on.
+    caches.open(CACHE)
+      .then(c => Promise.all(SHELL.map(u => c.add(u).catch(() => {}))))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -25,16 +40,27 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Network first for API calls (prices), cache fallback for shell
-  if (e.request.url.includes('jup.ag') || e.request.url.includes('solscan')) {
-    e.respondWith(fetch(e.request).catch(() => new Response('{}', { headers: { 'Content-Type': 'application/json' } })));
+  const url = e.request.url;
+
+  // Never cache chain or price data — a stale pool balance or ticket price is
+  // worse than no answer. Straight to the network, no cache fallback.
+  if (url.includes('api.devnet.solana.com') ||
+      url.includes('helius-rpc.com') ||
+      url.includes('api.coingecko.com')) {
+    e.respondWith(fetch(e.request));
     return;
   }
+
+  // Shell: network first, fall back to cache when offline.
   e.respondWith(
     fetch(e.request)
       .then(res => {
-        const clone = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, clone));
+        // Only cache successful same-origin GETs; caching opaque/error responses
+        // poisons the shell.
+        if (e.request.method === 'GET' && res.ok && res.type === 'basic') {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
         return res;
       })
       .catch(() => caches.match(e.request))
