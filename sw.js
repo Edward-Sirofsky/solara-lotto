@@ -7,7 +7,7 @@
 
 // Bump this whenever the shell changes — activate() deletes every other cache,
 // which is what evicts the pre-SOLARA assets from returning visitors.
-const CACHE = 'solara-v3';
+const CACHE = 'solara-v4';
 const SHELL = [
   '/',
   '/index.html',
@@ -44,8 +44,12 @@ self.addEventListener('fetch', e => {
 
   // Never cache chain or price data — a stale pool balance or ticket price is
   // worse than no answer. Straight to the network, no cache fallback.
+  // workers.dev is the Cloudflare RPC proxy — it replaced the direct Helius
+  // endpoint, so matching only helius-rpc.com would silently start caching
+  // chain state again.
   if (url.includes('api.devnet.solana.com') ||
       url.includes('helius-rpc.com') ||
+      url.includes('.workers.dev') ||
       url.includes('api.coingecko.com')) {
     e.respondWith(fetch(e.request));
     return;
