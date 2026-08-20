@@ -826,6 +826,9 @@
       APP_ICON:        'https://solaralotto.io/icons/icon-192.png',
       // LIVE ON MAINNET — real funds. The program is deployed at the same address on
       // both clusters, so switching cluster is purely an RPC/CLUSTER change.
+      // Routed through a Cloudflare Worker that injects the Helius API key server-side.
+      // The key must never appear here: this file is public on GitHub and readable in
+      // the page source of every visitor.
       RPC:             'https://solara-rpc-proxy.phaseoneclawd.workers.dev',
       CLUSTER:         'mainnet-beta',
       DRY_RUN:         false,
