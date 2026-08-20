@@ -822,8 +822,8 @@
       DRAW_DAY:        4,      // Thursday
       DRAW_HOUR_UTC:   15,     // 15:00 UTC
       APP_NAME:        'SOLARA',
-      APP_URI:         'https://edward-sirofsky.github.io/solana-lotto',
-      APP_ICON:        'https://edward-sirofsky.github.io/solana-lotto/icons/icon-192.png',
+      APP_URI:         'https://solaralotto.io',
+      APP_ICON:        'https://solaralotto.io/icons/icon-192.png',
       // LIVE ON MAINNET — real funds. The program is deployed at the same address on
       // both clusters, so switching cluster is purely an RPC/CLUSTER change.
       RPC:             'https://solara-rpc-proxy.phaseoneclawd.workers.dev',
@@ -1762,7 +1762,7 @@
           showToast(rejected ? 'Connection rejected' : 'Phantom not available', 'error');
         });
       } else if (/Android/i.test(navigator.userAgent)) {
-        window.location.href = 'https://phantom.app/ul/v1/browse/https%3A%2F%2Fedward-sirofsky.github.io%2Fsolana-lotto%2F';
+        window.location.href = 'https://phantom.app/ul/v1/browse/https%3A%2F%2Fsolaralotto.io%2F';
       } else {
         window.open('https://phantom.app', '_blank');
         showToast('Install Phantom then try again', 'info');
@@ -1864,12 +1864,12 @@
     // ═══════════════════════════════════════════════════════════
     // SERVICE WORKER REGISTRATION
     // ═══════════════════════════════════════════════════════════
-    // Skipped inside the native APK: the app is served from the bundled assets, so the
-    // /solana-lotto/ scope does not exist there and registration always fails. Offline
-    // caching is pointless in a WebView that already ships its own copy of the app.
+    // Skipped inside the native APK: the app is served from the bundled assets under
+    // /assets/, so a root-scoped worker cannot control it and registration always fails.
+    // Offline caching is pointless in a WebView that already ships its own copy of the app.
     if('serviceWorker' in navigator && !IS_NATIVE_APP){
       window.addEventListener('load',()=>{
-        navigator.serviceWorker.register('/solana-lotto/sw.js',{scope:'/solana-lotto/',updateViaCache:'none'})
+        navigator.serviceWorker.register('/sw.js',{scope:'/',updateViaCache:'none'})
           .catch(e=>console.log('SW reg failed:',e));
       });
     }

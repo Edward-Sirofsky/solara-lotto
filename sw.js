@@ -7,18 +7,18 @@
 
 // Bump this whenever the shell changes — activate() deletes every other cache,
 // which is what evicts the pre-SOLARA assets from returning visitors.
-const CACHE = 'solara-v2';
+const CACHE = 'solara-v3';
 const SHELL = [
-  '/solana-lotto/',
-  '/solana-lotto/index.html',
-  '/solana-lotto/manifest.json',
-  '/solana-lotto/vendor/buffer.min.js',
-  '/solana-lotto/vendor/solana-web3.iife.min.js',
-  '/solana-lotto/icons/icon-192.png',
-  '/solana-lotto/icons/icon-512.png',
-  '/solana-lotto/assets/solara-coin.png',
-  '/solana-lotto/assets/solara-wordmark-only.png',
-  '/solana-lotto/assets/solara-banner.jpg',
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/vendor/buffer.min.js',
+  '/vendor/solana-web3.iife.min.js',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/assets/solara-coin.png',
+  '/assets/solara-wordmark-only.png',
+  '/assets/solara-banner.jpg',
 ];
 
 self.addEventListener('install', e => {
