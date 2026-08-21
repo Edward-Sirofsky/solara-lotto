@@ -296,6 +296,23 @@
       cursor:pointer; white-space:nowrap;
     }
     .claim-btn:disabled { background:rgba(255,255,255,.1); color:var(--text-faint); cursor:default; }
+    /* ── YOUR RESULTS (check & claim, any settled round) ──── */
+    .my-results { padding:24px 22px 22px; margin:0 0 18px; }
+    .mr-row { padding:14px 15px; border-radius:14px; border:1px solid var(--line); background:rgba(255,255,255,.025); margin-bottom:10px; }
+    .mr-row.won { border-color:rgba(245,197,107,.42); background:linear-gradient(120deg, rgba(245,197,107,.1), rgba(255,255,255,.02)); }
+    .mr-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+    .mr-left { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+    .mr-round { font:600 14px 'Outfit',sans-serif; color:var(--text); }
+    .mr-num { font:500 15px 'JetBrains Mono',monospace; color:var(--gold); letter-spacing:.14em; }
+    .mr-meta { font:400 12px 'Outfit',sans-serif; color:var(--text-faint); }
+    .mr-check { margin-top:12px; padding:11px 22px; font-size:13.5px; }
+    .mr-nowin { margin-top:10px; font:400 13px/1.6 'Outfit',sans-serif; color:var(--text-muted); }
+    .mr-wonlab { margin-top:10px; font:600 13px 'Outfit',sans-serif; color:var(--gold); }
+    .mr-win { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-top:10px; padding-top:10px; border-top:1px solid var(--line); }
+    .mr-win-info { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+    .mr-bracket { font:400 12px 'Outfit',sans-serif; color:var(--text-muted); }
+    .digit-chip.hit { background:rgba(245,197,107,.16); border-color:rgba(245,197,107,.5); color:var(--gold); }
+
     .tickets-empty { margin:14px 0 0; padding:20px; border-radius:12px; border:1px dashed rgba(255,255,255,.14); text-align:center; font:400 13px 'Outfit',sans-serif; color:var(--text-faint); }
     .tickets-foot { margin-top:16px; padding-top:14px; border-top:1px solid var(--line); font:400 12.5px/1.6 'Outfit',sans-serif; color:var(--text-faint); }
 
@@ -616,7 +633,7 @@
           </div>
           <div class="my-tickets-list" id="myTicketsList"></div>
           <div class="tickets-empty" id="myTicketsEmpty">No tickets yet this round</div>
-          <div class="tickets-foot">Matches count from the first digit. Winning tickets are claimable the moment the round is drawn.</div>
+          <div class="tickets-foot">Matches count from the first digit. Once a round is drawn, check and claim it under <strong>Your results</strong> — prizes stay claimable after the next round opens.</div>
         </div>
       </div>
     </section>
@@ -676,8 +693,18 @@
         <div class="sub" id="resultsSubhead">No round drawn yet</div>
       </div>
 
+      <section class="card my-results" id="myResults" style="display:none">
+        <div class="block-head" style="align-items:baseline">
+          <div class="title">Your results</div>
+          <div class="sub" id="myResultsCount">—</div>
+        </div>
+        <div id="myResultsList" style="margin-top:16px"></div>
+        <div class="results-empty" id="myResultsEmpty">You held no tickets in any round that has been drawn yet.</div>
+        <div class="tickets-foot" style="margin-top:14px">Checking is free and off-chain — your ticket numbers and the winning number are both already on chain. Only claiming needs a signature.</div>
+      </section>
+
       <div class="winning-card">
-        <div class="wlab">Winning number</div>
+        <div class="wlab" id="winningLabel">Winning number</div>
         <div class="winning-digits" id="winningDigits"></div>
         <div class="winning-empty" id="winningEmpty">The winning number appears here once a round is drawn.</div>
         <div class="wmeta" id="winningMeta" style="display:none"></div>
@@ -707,14 +734,14 @@
           <div class="sub" id="biggestWinSub">No wins recorded yet</div>
         </div>
         <div class="alltime-cell">
-          <div class="mlab">Paid out all-time</div>
+          <div class="mlab">Prizes claimed</div>
           <div class="val tabular" id="paidAllTime">— <span class="unit">SOL</span></div>
           <div class="sub" id="paidAllTimeSub">Across 0 settled rounds</div>
         </div>
         <div class="alltime-cell">
-          <div class="mlab">Winners paid</div>
+          <div class="mlab">Winners</div>
           <div class="val tabular" id="winnersPaidCount">0</div>
-          <div class="sub">Prizes settle in one on-chain transaction</div>
+          <div class="sub" id="winnersPaidSub">Prizes settle in one on-chain transaction</div>
         </div>
       </div>
     </section>
@@ -889,7 +916,10 @@
     let onchain = {
       lotteryState: null,
       round:        null,      // { pubkey, roundId, status, ...decoded fields }
-      myTickets:    [],        // [{ pubkey, ...decoded Ticket fields }] for the active round
+      myTickets:    [],        // [{ pubkey, ...decoded Ticket fields }] across ALL rounds
+      myCurrentTickets: [],    // just the ones in the round that is currently running
+      settledRounds: [],       // every Claimable round, newest first (incl. the current one if drawn)
+      allTickets:   [],        // every Ticket account on the program (for claimed-vs-allocated stats)
       pastRounds:   [],        // [{ pubkey, roundId, ...decoded fields }] Claimable rounds before the current one
     };
 
@@ -998,6 +1028,14 @@
           { memcmp: { offset: 20, bytes: ownerPubkey.toBase58() } },
         ],
       });
+      return accounts.map(({pubkey, account}) => ({ pubkey, ...decodeTicket(account.data) }));
+    }
+    // Every Ticket account, all rounds, in one scan. Used for the all-time stats,
+    // which must be based on tickets actually CLAIMED rather than on the bracket
+    // allocations stored in the Round account (a prize is allocated at draw time but
+    // only leaves the pool when its owner claims it).
+    async function fetchAllTickets(conn) {
+      const accounts = await conn.getProgramAccounts(programId(), { filters: [{ dataSize: 60 }] });
       return accounts.map(({pubkey, account}) => ({ pubkey, ...decodeTicket(account.data) }));
     }
     // Fetches every Ticket account for a round (for the public winners table).
@@ -1167,7 +1205,10 @@
       state.walletBalance = null;
       state.myTickets = [];
       onchain.myTickets = [];
+      onchain.myCurrentTickets = [];
+      revealedRounds.clear();
       renderMyTickets();
+      renderMyResults();
       renderClaimBanner();
       renderPlayGrid();
       btn.innerHTML = '<span class="btn-primary-glow"></span>Connect Wallet';
@@ -1361,7 +1402,7 @@
       document.getElementById('jackpotSOLAmount').textContent = jackpotSOL.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:4});
       document.getElementById('jackpotUSD').textContent = round ? `≈ $${jackpotUSD.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} USD` : 'Loading pool…';
       document.getElementById('ticketsSold').textContent = round ? round.totalTickets : state.ticketsSold;
-      document.getElementById('myTickets').textContent = round ? onchain.myTickets.length : state.myTickets.length;
+      document.getElementById('myTickets').textContent = round ? onchain.myCurrentTickets.length : state.myTickets.length;
       document.getElementById('ticketPriceStat').innerHTML = round ? `${(Number(round.ticketPriceLamports)/1e9).toFixed(4)} <span class="unit">SOL</span>` : `— <span class="unit">SOL</span>`;
       document.getElementById('roundStatusStat').textContent = round ? round.status : '—';
     }
@@ -1400,69 +1441,176 @@
       }).join('');
     }
 
+    // The "Your tickets" card is about the round that is CURRENTLY running: what you
+    // hold and whether it has been drawn yet. Checking and claiming lives in
+    // renderMyResults(), which covers every settled round rather than just this one.
     function renderMyTickets() {
       const list = document.getElementById('myTicketsList');
       const empty = document.getElementById('myTicketsEmpty');
       const round = onchain.round;
-      document.getElementById('myTicketsRoundLabel').textContent = round ? `${onchain.myTickets.length} in round #${round.roundId}` : '0 tickets';
-      if (!round || !onchain.myTickets.length) {
+      const tickets = onchain.myCurrentTickets;
+      document.getElementById('myTicketsRoundLabel').textContent =
+        round ? `${tickets.length} in round #${round.roundId}` : '0 tickets';
+      if (!round || !tickets.length) {
         list.innerHTML = '';
         empty.style.display = 'block';
         return;
       }
       empty.style.display = 'none';
-      const isClaimable = round.status === 'Claimable';
-      list.innerHTML = '';
-      onchain.myTickets.slice().sort((a,b) => a.ticketIndex - b.ticketIndex).forEach(t => {
-        const matched = isClaimable ? leadingMatchCount(t.number, round.winningNumber) : 0;
-        const won = isClaimable && matched > 0 && round.bracketPrizesPerWinner[matched-1] > 0n;
-        const row = document.createElement('div');
-        row.className = 'my-ticket-row' + (won ? ' won' : '');
+      const drawn = round.status === 'Claimable';
+      list.innerHTML = tickets.slice().sort((a,b) => a.ticketIndex - b.ticketIndex).map(t => {
         const digitsHtml = `<span class="my-ticket-digits">${t.number.map(d => `<span class="digit-chip">${d}</span>`).join('')}</span>`;
-        let statusHtml;
-        if (!isClaimable) {
-          statusHtml = `<span class="my-ticket-status">round in progress</span>`;
-        } else if (t.claimed) {
-          statusHtml = `<span class="my-ticket-status">claimed ✓</span>`;
-        } else if (won) {
-          const prizeSol = (Number(round.bracketPrizesPerWinner[matched-1]) / 1e9).toFixed(4);
-          statusHtml = `<span class="prize-tag">${prizeSol} SOL</span> <button class="claim-btn" data-ticket="${t.pubkey.toBase58()}">Claim</button>`;
-        } else {
-          statusHtml = `<span class="my-ticket-status">no match</span>`;
+        const statusHtml = drawn
+          ? `<span class="my-ticket-status">drawn · see Your results ↓</span>`
+          : `<span class="my-ticket-status">round in progress</span>`;
+        return `<div class="my-ticket-row">${digitsHtml}${statusHtml}</div>`;
+      }).join('');
+    }
+
+    // ── Check & claim, across every settled round ─────────────────────────────
+    // Rounds the wallet has asked to reveal. Checking is purely client-side: the
+    // ticket numbers and the round's winning number are both already on chain, so
+    // "did I win" costs no transaction and no signature.
+    const revealedRounds = new Set();
+
+    function winningTicketsFor(round, tickets) {
+      return tickets
+        .filter(t => t.roundId === round.roundId)
+        .map(t => ({ t, matched: leadingMatchCount(t.number, round.winningNumber) }))
+        .filter(w => w.matched > 0 && round.bracketPrizesPerWinner[w.matched - 1] > 0n);
+    }
+
+    // Every settled round in which this wallet holds at least one ticket.
+    function mySettledRounds() {
+      if (!state.walletAddress) return [];
+      return onchain.settledRounds.filter(r => onchain.myTickets.some(t => t.roundId === r.roundId));
+    }
+
+    function renderMyResults() {
+      const section = document.getElementById('myResults');
+      const list = document.getElementById('myResultsList');
+      const empty = document.getElementById('myResultsEmpty');
+      const countLabel = document.getElementById('myResultsCount');
+      if (!section) return;
+
+      if (!state.walletAddress) {
+        section.style.display = 'none';
+        return;
+      }
+      section.style.display = 'block';
+
+      const rounds = mySettledRounds();
+      countLabel.textContent = rounds.length
+        ? `${rounds.length} drawn round${rounds.length === 1 ? '' : 's'}`
+        : 'nothing to check yet';
+
+      if (!rounds.length) {
+        list.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+      }
+      empty.style.display = 'none';
+
+      list.innerHTML = rounds.map(r => {
+        const id = r.roundId.toString();
+        const mine = onchain.myTickets.filter(t => t.roundId === r.roundId);
+        const wins = winningTicketsFor(r, onchain.myTickets);
+        const revealed = revealedRounds.has(id);
+
+        const head = `<div class="mr-head">
+            <span class="mr-left">
+              <span class="mr-round">Round #${id}</span>
+              <span class="mr-num">${r.winningNumber.join('')}</span>
+            </span>
+            <span class="mr-meta">${mine.length} ticket${mine.length === 1 ? '' : 's'}</span>
+          </div>`;
+
+        if (!revealed) {
+          return `<div class="mr-row">${head}
+            <button class="btn-gold mr-check" data-round="${id}">Check if you won</button>
+          </div>`;
         }
-        row.innerHTML = digitsHtml + statusHtml;
-        list.appendChild(row);
+
+        if (!wins.length) {
+          return `<div class="mr-row">${head}
+            <div class="mr-nowin">${mine.length === 1
+              ? `No win this round — your ticket didn't match the first digit.`
+              : `No win this round — none of your ${mine.length} tickets matched the first digit.`} Better luck Thursday.</div>
+          </div>`;
+        }
+
+        const rows = wins
+          .sort((a,b) => Number(r.bracketPrizesPerWinner[b.matched-1] - r.bracketPrizesPerWinner[a.matched-1]))
+          .map(w => {
+            const prize = Number(r.bracketPrizesPerWinner[w.matched - 1]) / 1e9;
+            const label = (BRACKET_META[w.matched - 1] || {}).label || `Match first ${w.matched}`;
+            const digits = `<span class="my-ticket-digits">${w.t.number.map((d,i) =>
+              `<span class="digit-chip${i < w.matched ? ' hit' : ''}">${d}</span>`).join('')}</span>`;
+            const action = w.t.claimed
+              ? `<span class="my-ticket-status">claimed ✓</span>`
+              : `<button class="claim-btn" data-ticket="${w.t.pubkey.toBase58()}" data-round="${r.pubkey.toBase58()}">Claim</button>`;
+            return `<div class="mr-win">
+                ${digits}
+                <span class="mr-win-info"><span class="mr-bracket">${label}</span><span class="prize-tag">${prize.toFixed(4)} SOL</span></span>
+                ${action}
+              </div>`;
+          }).join('');
+
+        return `<div class="mr-row won">${head}
+          <div class="mr-wonlab">You won ${wins.length > 1 ? `${wins.length} prizes` : 'a prize'} in this round</div>
+          ${rows}
+        </div>`;
+      }).join('');
+
+      list.querySelectorAll('.mr-check').forEach(btn => {
+        btn.addEventListener('click', () => {
+          revealedRounds.add(btn.dataset.round);
+          renderMyResults();
+        });
       });
       list.querySelectorAll('.claim-btn').forEach(btn => {
-        btn.addEventListener('click', () => handleClaim(btn.dataset.ticket, btn));
+        btn.addEventListener('click', () => handleClaim(btn.dataset.ticket, btn.dataset.round, btn));
       });
     }
 
     function renderClaimBanner() {
       const section = document.getElementById('claimBanner');
-      const round = onchain.round;
-      if (!round || round.status !== 'Claimable' || !onchain.myTickets.length) { section.style.display = 'none'; return; }
-      const winners = onchain.myTickets
-        .map(t => ({ t, matched: leadingMatchCount(t.number, round.winningNumber) }))
-        .filter(w => w.matched > 0 && round.bracketPrizesPerWinner[w.matched-1] > 0n && !w.t.claimed);
-      if (!winners.length) { section.style.display = 'none'; return; }
-      winners.sort((a,b) => Number(round.bracketPrizesPerWinner[b.matched-1] - round.bracketPrizesPerWinner[a.matched-1]));
-      const best = winners[0];
-      const prizeSol = Number(round.bracketPrizesPerWinner[best.matched-1]) / 1e9;
+      // Scan every settled round, not just the current one -- an unclaimed prize from
+      // an earlier round stays reachable after the next round opens.
+      const claims = [];
+      for (const r of onchain.settledRounds) {
+        for (const w of winningTicketsFor(r, onchain.myTickets)) {
+          if (!w.t.claimed) claims.push({ round: r, ...w });
+        }
+      }
+      if (!state.walletAddress || !claims.length) { section.style.display = 'none'; return; }
+
+      claims.sort((a, b) => Number(
+        b.round.bracketPrizesPerWinner[b.matched-1] - a.round.bracketPrizesPerWinner[a.matched-1]));
+      const best = claims[0];
+      const prizeSol = Number(best.round.bracketPrizesPerWinner[best.matched - 1]) / 1e9;
+      const totalSol = claims.reduce((sum, c) =>
+        sum + Number(c.round.bracketPrizesPerWinner[c.matched - 1]) / 1e9, 0);
+
       section.style.display = 'flex';
-      document.getElementById('claimBannerRound').textContent = `Round #${round.roundId} · You won`;
-      document.getElementById('claimBannerAmount').textContent = prizeSol.toFixed(4);
-      document.getElementById('claimBannerUsd').textContent = `≈ $${(prizeSol*state.prices.SOL).toFixed(2)}`;
-      document.getElementById('claimBannerDetail').textContent = winners.length > 1
-        ? `${winners.length} winning tickets · best match: ${best.matched} digit${best.matched>1?'s':''}`
-        : `1 ticket matched ${best.matched} digit${best.matched>1?'s':''} · prize sent straight to your wallet`;
+      document.getElementById('claimBannerRound').textContent =
+        claims.length > 1 ? 'You have unclaimed prizes' : `Round #${best.round.roundId} · You won`;
+      document.getElementById('claimBannerAmount').textContent = (claims.length > 1 ? totalSol : prizeSol).toFixed(4);
+      document.getElementById('claimBannerUsd').textContent =
+        `≈ $${((claims.length > 1 ? totalSol : prizeSol) * state.prices.SOL).toFixed(2)}`;
+      document.getElementById('claimBannerDetail').textContent = claims.length > 1
+        ? `${claims.length} winning tickets across ${new Set(claims.map(c => c.round.roundId.toString())).size} round(s) · claim each one below`
+        : `Round #${best.round.roundId} · matched ${best.matched} digit${best.matched > 1 ? 's' : ''} · paid straight to your wallet`;
+
       const btn = document.getElementById('claimBannerBtn');
-      btn.textContent = winners.length > 1 ? `Claim ${prizeSol.toFixed(4)} SOL (1 of ${winners.length})` : `Claim ${prizeSol.toFixed(4)} SOL`;
-      btn.onclick = () => handleClaim(best.t.pubkey.toBase58(), btn);
+      btn.textContent = `Claim ${prizeSol.toFixed(4)} SOL`;
+      btn.onclick = () => handleClaim(best.t.pubkey.toBase58(), best.round.pubkey.toBase58(), btn);
     }
 
-    async function handleClaim(ticketPubkeyStr, btnEl) {
-      if (!state.walletAddress || !onchain.round) return;
+    // ticketPubkeyStr's prize is held by ITS OWN round account, which is not
+    // necessarily the round currently running -- pass it explicitly.
+    async function handleClaim(ticketPubkeyStr, roundPubkeyStr, btnEl) {
+      if (!state.walletAddress || !roundPubkeyStr) return;
       const originalText = btnEl.textContent;
       btnEl.disabled = true;
       btnEl.textContent = 'Claiming…';
@@ -1470,7 +1618,7 @@
         const { Connection, PublicKey, ComputeBudgetProgram, Transaction } = solanaWeb3;
         const conn = new Connection(CONFIG.RPC, 'confirmed');
         const owner = new PublicKey(state.walletAddress);
-        const ix = await buildClaimPrizeIx(owner, onchain.round.pubkey, new PublicKey(ticketPubkeyStr));
+        const ix = await buildClaimPrizeIx(owner, new PublicKey(roundPubkeyStr), new PublicKey(ticketPubkeyStr));
         const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash();
         const tx = new Transaction({ recentBlockhash: blockhash, feePayer: owner });
         tx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 200000 }));
@@ -1487,26 +1635,44 @@
       }
     }
 
+    // Shows the most recently SETTLED round. Previously this read onchain.round, so the
+    // moment start_round opened an undrawn round the panel flipped to "No round drawn
+    // yet" -- while Past rounds simultaneously listed the round that had just been
+    // drawn. Current-round state is reported separately in the subhead.
     async function renderResultsSection(conn) {
-      const round = onchain.round;
+      const round = onchain.settledRounds[0] || null;
+      const current = onchain.round;
       const winningDigits = document.getElementById('winningDigits');
       const winningEmpty = document.getElementById('winningEmpty');
       const winningMeta = document.getElementById('winningMeta');
+      const winningLabel = document.getElementById('winningLabel');
       const bracketList = document.getElementById('bracketResultsList');
       const bracketEmpty = document.getElementById('bracketResultsEmpty');
       const subhead = document.getElementById('resultsSubhead');
 
-      if (!round || round.status !== 'Claimable') {
+      const currentNote = current
+        ? (current.status === 'Claimable'
+            ? `Round #${current.roundId} just drawn`
+            : current.status === 'Open'
+              ? `Round #${current.roundId} open · draws ${fmtDrawDate(current.endTime)}`
+              : `Round #${current.roundId} ${current.status.toLowerCase()} · draw in progress`)
+        : '';
+
+      if (!round) {
         winningDigits.innerHTML = '';
         winningEmpty.style.display = 'block';
+        winningEmpty.textContent = 'No round has been drawn yet. The winning number appears here after the first draw.';
         winningMeta.style.display = 'none';
+        if (winningLabel) winningLabel.textContent = 'Winning number';
         bracketList.innerHTML = '';
         bracketEmpty.style.display = 'block';
-        subhead.textContent = 'No round drawn yet';
+        bracketEmpty.textContent = 'No round drawn yet';
+        subhead.textContent = currentNote || 'No round drawn yet';
         return;
       }
 
-      subhead.textContent = `Round #${round.roundId} · drawn`;
+      subhead.textContent = `Latest result: round #${round.roundId}` + (currentNote ? ` · ${currentNote}` : '');
+      if (winningLabel) winningLabel.textContent = `Winning number · round #${round.roundId}`;
       winningEmpty.style.display = 'none';
       winningDigits.innerHTML = round.winningNumber.map((d,i) => `<div class="win-digit" style="animation-delay:${i*0.08}s">${d}</div>`).join('');
       winningMeta.style.display = 'block';
@@ -1521,6 +1687,15 @@
         const perLabel = count > 0 ? `${(Number(per)/1e9).toFixed(4)} SOL` : 'rolled over';
         return `<div class="br-row"><span class="lab">${b.label} · ${count} winner${count===1?'':'s'}</span><span class="per" style="color:${count>0?'var(--gold)':'var(--text-faint)'}">${perLabel}</span></div>`;
       }).join('');
+    }
+
+    function fmtDrawDate(unixSeconds) {
+      try {
+        return new Date(Number(unixSeconds) * 1000).toLocaleString(undefined, {
+          weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+          timeZone: 'UTC', hour12: false,
+        }) + ' UTC';
+      } catch (e) { return 'Thursday 15:00 UTC'; }
     }
 
     let openPastRoundId = null;
@@ -1557,28 +1732,59 @@
       });
     }
 
+    // Two different numbers that must never be conflated:
+    //   ALLOCATED -- what draw_winners set aside per bracket. Known at draw time.
+    //   CLAIMED   -- what winners have actually pulled out, i.e. tickets with
+    //                claimed = true on chain. Starts at zero after every draw.
+    // The tiles previously showed allocations under the labels "Paid out all-time" and
+    // "Winners paid", so the page claimed prizes had been paid while nothing had been.
     function renderAllTimeStats() {
-      const rounds = onchain.pastRounds.slice();
-      if (onchain.round && onchain.round.status === 'Claimable') rounds.push(onchain.round);
+      const rounds = onchain.settledRounds;
 
-      let biggestWin = 0n, totalPaid = 0n, totalWinners = 0;
+      let biggestPrize = 0n, allocatedTotal = 0n, totalWinners = 0;
       for (const r of rounds) {
         for (let i = 0; i < 6; i++) {
           const count = r.bracketCounts[i];
           const per = r.bracketPrizesPerWinner[i];
           if (count > 0) {
             totalWinners += count;
-            totalPaid += per * BigInt(count);
-            if (per > biggestWin) biggestWin = per;
+            allocatedTotal += per * BigInt(count);
+            if (per > biggestPrize) biggestPrize = per;
           }
         }
       }
 
-      document.getElementById('biggestWin').innerHTML = biggestWin > 0n ? `${(Number(biggestWin)/1e9).toFixed(4)} <span class="unit">SOL</span>` : `— <span class="unit">SOL</span>`;
-      document.getElementById('biggestWinSub').textContent = biggestWin > 0n ? `Largest single-ticket prize paid` : 'No wins recorded yet';
-      document.getElementById('paidAllTime').innerHTML = `${(Number(totalPaid)/1e9).toFixed(4)} <span class="unit">SOL</span>`;
-      document.getElementById('paidAllTimeSub').textContent = `Across ${rounds.length} settled round${rounds.length===1?'':'s'}`;
+      // Real claims, straight off the Ticket accounts.
+      let claimedTotal = 0n, claimedCount = 0;
+      const byId = new Map(rounds.map(r => [r.roundId.toString(), r]));
+      for (const t of onchain.allTickets) {
+        if (!t.claimed) continue;
+        const r = byId.get(t.roundId.toString());
+        if (!r) continue;
+        const matched = leadingMatchCount(t.number, r.winningNumber);
+        if (matched > 0 && r.bracketPrizesPerWinner[matched - 1] > 0n) {
+          claimedTotal += r.bracketPrizesPerWinner[matched - 1];
+          claimedCount++;
+        }
+      }
+
+      const sol = (v) => (Number(v) / 1e9).toFixed(4);
+
+      document.getElementById('biggestWin').innerHTML = biggestPrize > 0n
+        ? `${sol(biggestPrize)} <span class="unit">SOL</span>` : `— <span class="unit">SOL</span>`;
+      document.getElementById('biggestWinSub').textContent = biggestPrize > 0n
+        ? 'Largest single-ticket prize won' : 'No wins recorded yet';
+
+      document.getElementById('paidAllTime').innerHTML = `${sol(claimedTotal)} <span class="unit">SOL</span>`;
+      document.getElementById('paidAllTimeSub').textContent = allocatedTotal > 0n
+        ? `of ${sol(allocatedTotal)} SOL allocated across ${rounds.length} settled round${rounds.length===1?'':'s'}`
+        : `Across ${rounds.length} settled round${rounds.length===1?'':'s'}`;
+
       document.getElementById('winnersPaidCount').textContent = totalWinners.toLocaleString();
+      const wSub = document.getElementById('winnersPaidSub');
+      if (wSub) wSub.textContent = totalWinners > 0
+        ? `${claimedCount} of ${totalWinners} claimed so far`
+        : 'Prizes settle in one on-chain transaction';
     }
 
     async function refreshWalletBalance(conn) {
@@ -1598,6 +1804,7 @@
         const ls = await fetchLotteryState(conn);
         if (!ls || ls.currentRoundId === 0n) {
           onchain.lotteryState = null; onchain.round = null; onchain.myTickets = []; onchain.pastRounds = [];
+          onchain.myCurrentTickets = []; onchain.settledRounds = []; onchain.allTickets = [];
           return; // program not initialized / no round started yet — UI keeps its fallback
         }
         onchain.lotteryState = ls;
@@ -1605,14 +1812,32 @@
         onchain.round = round;
         onchain.pastRounds = await fetchPastRounds(conn, ls.currentRoundId);
 
-        if (state.walletAddress && round) {
+        // Every round a prize can still be claimed from, newest first. The current round
+        // belongs in here too during the window between draw_winners and the next
+        // start_round -- but it is NOT the only member, which is the bug this fixes:
+        // binding the claim UI to onchain.round alone made a prize unreachable the
+        // moment the next round opened.
+        onchain.settledRounds = [
+          ...(round && round.status === 'Claimable' ? [round] : []),
+          ...onchain.pastRounds,
+        ].sort((a, b) => (b.roundId > a.roundId ? 1 : b.roundId < a.roundId ? -1 : 0));
+
+        if (state.walletAddress) {
           const owner = new solanaWeb3.PublicKey(state.walletAddress);
-          const all = await fetchMyTickets(conn, owner);
-          onchain.myTickets = all.filter(t => t.roundId === round.roundId);
+          // Keep ALL of the wallet's tickets -- the settled-round claim flow needs the
+          // ones from earlier rounds, not just the round that happens to be running.
+          onchain.myTickets = await fetchMyTickets(conn, owner);
+          onchain.myCurrentTickets = round ? onchain.myTickets.filter(t => t.roundId === round.roundId) : [];
           await refreshWalletBalance(conn);
         } else {
           onchain.myTickets = [];
+          onchain.myCurrentTickets = [];
         }
+
+        // Claimed-vs-allocated stats. Non-critical: if the scan fails the stats fall
+        // back to allocation-only figures rather than breaking the page.
+        try { onchain.allTickets = await fetchAllTickets(conn); }
+        catch (e) { onchain.allTickets = []; }
 
         updatePool();
         updateTicketPriceLabel();
@@ -1620,6 +1845,7 @@
         renderRoundStatusPill();
         renderBracketsTable();
         renderMyTickets();
+        renderMyResults();
         renderClaimBanner();
         await renderResultsSection(conn);
         renderPastRounds();
