@@ -372,7 +372,8 @@
 
     /* ── FOOTER ───────────────────────────────────────────── */
     footer { position:relative; z-index:1; border-top:1px solid var(--line); background:rgba(7,6,15,.6); }
-    .footer-inner { max-width:1180px; margin:0 auto; padding:40px 20px 36px; display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:28px; }
+    .footer-inner { max-width:1180px; margin:0 auto; padding:40px 20px 36px; display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr; gap:28px; }
+    @media (max-width:960px) { .footer-inner { grid-template-columns:1fr 1fr; } }
     @media (max-width:700px) { .footer-inner { grid-template-columns:1fr; } }
     .footer-brand-desc { margin:14px 0 0; max-width:290px; font:400 13px/1.7 'Outfit',sans-serif; color:var(--text-faint); }
     .footer-program { margin:16px 0 0; font:400 12px 'JetBrains Mono',monospace; color:rgba(237,233,255,.3); }
@@ -737,6 +738,10 @@
       <div class="footer-col">
         <div class="flab">Trust</div>
         <div class="flinks"><a href="#" id="footerSolscanLink" target="_blank" rel="noopener">Program on Solscan ↗</a><a href="#how">How the draw works</a></div>
+      </div>
+      <div class="footer-col">
+        <div class="flab">Legal</div>
+        <div class="flinks"><a href="terms.html">Terms of Use</a><a href="privacy.html">Privacy Policy</a><a href="copyright.html">Copyright</a></div>
       </div>
     </div>
     <div class="footer-bottom">

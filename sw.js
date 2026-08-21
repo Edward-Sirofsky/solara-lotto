@@ -7,10 +7,13 @@
 
 // Bump this whenever the shell changes — activate() deletes every other cache,
 // which is what evicts the pre-SOLARA assets from returning visitors.
-const CACHE = 'solara-v4';
+const CACHE = 'solara-v5';
 const SHELL = [
   '/',
   '/index.html',
+  '/terms.html',
+  '/privacy.html',
+  '/copyright.html',
   '/manifest.json',
   '/vendor/buffer.min.js',
   '/vendor/solana-web3.iife.min.js',
