@@ -14,6 +14,11 @@ local.properties
 .env
 .env.*
 
+# The SOLARA draw operator keypair. It signs close_round/tally_batch/
+# draw_winners on mainnet. It lives on the VPS at /root/solara-cron/ and
+# must never end up in this repo.
+operator*.json
+
 # ─── Build outputs ────────────────────────────────────────────────────
 *.apk
 *.aab
