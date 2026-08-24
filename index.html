@@ -813,7 +813,7 @@
       <div style="margin-top:16px">
         <div class="tx-detail"><span class="tx-key">Tickets</span><span class="tx-val" id="modal-tickets">1 ticket</span></div>
         <div class="tx-detail"><span class="tx-key">Amount</span><span class="tx-val purple" id="modal-amount">—</span></div>
-        <div class="tx-detail"><span class="tx-key">USD value</span><span class="tx-val" id="modal-usd">~$5.00</span></div>
+        <div class="tx-detail"><span class="tx-key">USD value</span><span class="tx-val" id="modal-usd">—</span></div>
         <div class="tx-detail"><span class="tx-key">Token</span><span class="tx-val" id="modal-token">SOL</span></div>
       </div>
       <div style="font:500 10.5px 'Space Grotesk',sans-serif;letter-spacing:.14em;color:var(--text-faint);margin-top:16px;margin-bottom:6px;text-transform:uppercase">Lottery pool (on-chain program)</div>
@@ -904,7 +904,10 @@
       walletBalance:  null,
       selectedToken:  'SOL',
       qty:            1,
-      prices:         { SOL: 130, SKR: 0.018 },
+      // 0 means "not known yet". Never seed a placeholder price here: every
+      // USD figure on the page is derived from it, so a wrong seed makes the
+      // app state a dollar amount it has no basis for. See fmtUSD().
+      prices:         { SOL: 0, SKR: 0 },
       ticketsSold:    0,
       myTickets:      [],     // client-side fallback list (DRY_RUN / native-bridge paths only)
       isMobile:       /Android|iPhone|iPad/i.test(navigator.userAgent),
@@ -1370,9 +1373,22 @@
     // ═══════════════════════════════════════════════════════════
     // PRICES — CoinGecko
     // ═══════════════════════════════════════════════════════════
+    // A real SOL price only exists once CoinGecko has answered. Until then we
+    // show no dollar figure at all rather than an invented one — CoinGecko rate
+    // limits often, so this is a normal state, not an edge case.
+    function priceKnown() { return state.prices.SOL > 0; }
+    function fmtUSD(solAmount, { prefix = '\u2248 $', suffix = '' } = {}) {
+      if (!priceKnown()) return null;
+      return prefix + (solAmount * state.prices.SOL)
+        .toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + suffix;
+    }
+
     function updateTicketPriceLabel() {
       const solAmt = currentTicketPriceSOL();
-      document.getElementById('sol-price-label').textContent = `$${state.prices.SOL.toFixed(2)} · ${solAmt.toFixed(4)}/ticket`;
+      document.getElementById('sol-price-label').textContent =
+        priceKnown() ? `$${state.prices.SOL.toFixed(2)} · ${solAmt.toFixed(4)}/ticket`
+      : solAmt > 0  ? `${solAmt.toFixed(4)}/ticket`
+      :               'Loading…';
     }
     async function fetchPrices() {
       try {
@@ -1394,13 +1410,24 @@
       let jackpotSOL, jackpotUSD;
       if (round) {
         jackpotSOL = Number(round.totalPool) / 1e9;
-        jackpotUSD = jackpotSOL * state.prices.SOL;
+        jackpotUSD = jackpotSOL * state.prices.SOL;   // only rendered when priceKnown()
       } else {
         jackpotUSD = state.ticketsSold * CONFIG.TICKET_USD * 0.80;
         jackpotSOL = state.prices.SOL > 0 ? jackpotUSD / state.prices.SOL : 0;
       }
       document.getElementById('jackpotSOLAmount').textContent = jackpotSOL.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:4});
-      document.getElementById('jackpotUSD').textContent = round ? `≈ $${jackpotUSD.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} USD` : 'Loading pool…';
+      // While the price is unknown we still render a full-width placeholder and
+      // hide it, rather than emptying the node. An empty (or \u00A0) node collapses
+      // and the hero visibly jumps the moment the price lands.
+      const usdEl = document.getElementById('jackpotUSD');
+      if (round) {
+        const usdText = fmtUSD(jackpotSOL, { suffix: ' USD' });
+        usdEl.textContent      = usdText || '\u2248 $0.00 USD';
+        usdEl.style.visibility = usdText ? 'visible' : 'hidden';
+      } else {
+        usdEl.textContent      = 'Loading pool…';
+        usdEl.style.visibility = 'visible';
+      }
       document.getElementById('ticketsSold').textContent = round ? round.totalTickets : state.ticketsSold;
       document.getElementById('myTickets').textContent = round ? onchain.myCurrentTickets.length : state.myTickets.length;
       document.getElementById('ticketPriceStat').innerHTML = round ? `${(Number(round.ticketPriceLamports)/1e9).toFixed(4)} <span class="unit">SOL</span>` : `— <span class="unit">SOL</span>`;
@@ -1597,7 +1624,7 @@
         claims.length > 1 ? 'You have unclaimed prizes' : `Round #${best.round.roundId} · You won`;
       document.getElementById('claimBannerAmount').textContent = (claims.length > 1 ? totalSol : prizeSol).toFixed(4);
       document.getElementById('claimBannerUsd').textContent =
-        `≈ $${((claims.length > 1 ? totalSol : prizeSol) * state.prices.SOL).toFixed(2)}`;
+        fmtUSD(claims.length > 1 ? totalSol : prizeSol) || '';
       document.getElementById('claimBannerDetail').textContent = claims.length > 1
         ? `${claims.length} winning tickets across ${new Set(claims.map(c => c.round.roundId.toString())).size} round(s) · claim each one below`
         : `Round #${best.round.roundId} · matched ${best.matched} digit${best.matched > 1 ? 's' : ''} · paid straight to your wallet`;
@@ -1918,7 +1945,7 @@
       document.getElementById('costLine1Label').textContent = `${state.qty} × ${price.toFixed(4)} SOL`;
       document.getElementById('costLine1Val').textContent = `${tot.toFixed(4)} SOL`;
       document.getElementById('costTotal').textContent = `${tot.toFixed(4)} SOL`;
-      document.getElementById('costTotalUsd').textContent = `≈ $${(tot*state.prices.SOL).toFixed(2)}`;
+      document.getElementById('costTotalUsd').textContent = fmtUSD(tot) || '';
       document.getElementById('buyBtn').textContent = `Buy ${state.qty} ticket${state.qty>1?'s':''} · ${tot.toFixed(4)} SOL`;
       renderQuickPicks();
     }
@@ -1932,7 +1959,7 @@
       const tot = currentTicketPriceSOL() * state.qty;
       document.getElementById('modal-tickets').textContent=`${state.qty} ticket${state.qty>1?'s':''}`;
       document.getElementById('modal-amount').textContent=`${tot.toFixed(4)} SOL`;
-      document.getElementById('modal-usd').textContent=`~$${(tot*state.prices.SOL).toFixed(2)}`;
+      document.getElementById('modal-usd').textContent = fmtUSD(tot, { prefix: '~$' }) || '—';
       document.getElementById('modal-token').textContent='SOL';
       document.getElementById('modalSub').textContent=`Send ${tot.toFixed(4)} SOL — buy_tickets on-chain`;
       document.getElementById('modal-pool-addr').textContent = onchain.round ? onchain.round.pubkey.toBase58() : CONFIG.TREASURY;
