@@ -1306,13 +1306,21 @@
           }
         }
 
-        // ── 2. Try Wallet Standard / MWA (Seed Vault in TWA on Seeker) ──────
-        if (!result && !IS_NATIVE_APP && isMWAAvailable()) {
-          try {
-            result = await connectMWA();
-          } catch(e) {
-            console.log('Wallet Standard/MWA failed:', e.message);
-          }
+        // ── 2. Mobile web browser — deeplink into Phantom's in-app browser ──
+        // A normal phone browser injects no provider, so branch 1 found nothing:
+        // Phantom only injects inside its own in-app browser. This point used to
+        // fire an MWA association intent for any Android UA, which opened Phantom,
+        // failed the handshake, and bounced back to the "install Phantom" message
+        // below. Send the user into Phantom's browser instead, where branch 1
+        // connects normally. The universal link needs a percent-encoded target and
+        // is rejected without `ref`. The isPhantom guard leaves branch 3 free to
+        // handle an old in-app build rather than deeplinking it into itself.
+        if (!result && !IS_NATIVE_APP && state.isMobile && !window.solana?.isPhantom) {
+          const site = CONFIG.APP_URI.endsWith('/') ? CONFIG.APP_URI : CONFIG.APP_URI + '/';
+          resetBtn();
+          window.location.href = 'https://phantom.app/ul/browse/'
+            + encodeURIComponent(site) + '?ref=' + encodeURIComponent(site);
+          return;
         }
 
         // ── 3. Legacy Phantom API ────────────────────────────────────────────
