@@ -2084,6 +2084,28 @@
           batchSizes.push(Math.min(CONFIG.MAX_TICKETS_PER_TX, totalTickets - i));
         }
 
+        // ── Pre-flight balance check ──────────────────────────────────────────
+        // Phantom flags dapps that hand it transactions that are certain to fail,
+        // so we reject an underfunded purchase here rather than letting it reach
+        // the wallet. The buyer pays more than the sticker price: buy_tickets
+        // transfers ticket_price per ticket AND funds the rent-exempt minimum for
+        // every 60-byte Ticket PDA it creates (create_account from: buyer), so a
+        // check against the ticket price alone would still let doomed
+        // transactions through. Rent is asked of the RPC, not hardcoded.
+        const rentPerTicket = BigInt(await conn.getMinimumBalanceForRentExemption(60));
+        const feeBuffer     = 10000n * BigInt(batchSizes.length); // ~2x the 5000-lamport base fee per batch
+        const needed        = (round.ticketPriceLamports + rentPerTicket) * BigInt(totalTickets) + feeBuffer;
+        const balance       = BigInt(await conn.getBalance(buyer));
+        if (balance < needed) {
+          // Kept short deliberately: .toast is white-space:nowrap, max-width:90vw,
+          // so anything past ~42 chars clips on a 360px phone — which is exactly
+          // who hits this error. Ticket count doesn't fit and was dropped.
+          const sol4 = v => (Number(v) / 1e9).toFixed(4);
+          const err = new Error(`Not enough SOL — need ~${sol4(needed)}, have ${sol4(balance)}`);
+          err.preflight = true; // shown verbatim, not truncated, by the catch below
+          throw err;
+        }
+
         for (let b = 0; b < batchSizes.length; b++) {
           btn.textContent = batchSizes.length > 1 ? `Approve batch ${b+1}/${batchSizes.length}…` : 'Approve in wallet…';
 
@@ -2112,7 +2134,7 @@
         console.error('Purchase failed:', e);
         const msg = e?.message || '';
         const rejected = e?.code === 4001 || /reject|denied|cancel|dismiss/i.test(msg);
-        showToast(rejected ? 'Transaction cancelled' : `Failed: ${msg.slice(0, 80)}`, 'error');
+        showToast(e?.preflight ? msg : (rejected ? 'Transaction cancelled' : `Failed: ${msg.slice(0, 80)}`), 'error');
       } finally {
         btn.textContent = 'Send payment via wallet →';
         btn.disabled = false;
