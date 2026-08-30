@@ -297,7 +297,7 @@
     }
     .claim-btn:disabled { background:rgba(255,255,255,.1); color:var(--text-faint); cursor:default; }
     /* ── YOUR RESULTS (check & claim, any settled round) ──── */
-    .my-results { padding:24px 22px 22px; margin:0 0 18px; }
+    .my-results { padding:24px 22px 22px; margin:0 0 18px; scroll-margin-top:90px; }
     .mr-row { padding:14px 15px; border-radius:14px; border:1px solid var(--line); background:rgba(255,255,255,.025); margin-bottom:10px; }
     .mr-row.won { border-color:rgba(245,197,107,.42); background:linear-gradient(120deg, rgba(245,197,107,.1), rgba(255,255,255,.02)); }
     .mr-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
@@ -312,6 +312,17 @@
     .mr-win-info { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
     .mr-bracket { font:400 12px 'Outfit',sans-serif; color:var(--text-muted); }
     .digit-chip.hit { background:rgba(245,197,107,.16); border-color:rgba(245,197,107,.5); color:var(--gold); }
+    /* Every ticket in a settled round gets a row, winner or not -- a losing ticket
+       that is never drawn on screen is a ticket the owner cannot verify. */
+    .mr-summary { margin-top:10px; font:400 13px/1.6 'Outfit',sans-serif; color:var(--text-muted); }
+    .mr-summary.won { color:var(--gold); font-weight:600; }
+    .mr-tickets { margin-top:4px; }
+    .mr-ticket { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-top:10px; padding-top:10px; border-top:1px solid var(--line); }
+    .mr-ticket-info { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; flex:1 1 auto; }
+    .mr-verdict { font:400 12px 'Outfit',sans-serif; color:var(--text-faint); }
+    .mr-connect { margin:14px 0 0; padding:22px 20px; border-radius:12px; border:1px dashed rgba(124,77,255,.32); background:rgba(124,77,255,.06); text-align:center; }
+    .mr-connect p { font:400 13.5px/1.7 'Outfit',sans-serif; color:var(--text-muted); }
+    .mr-connect .btn-primary { margin-top:14px; padding:13px 28px; font-size:14px; }
 
     .tickets-empty { margin:14px 0 0; padding:20px; border-radius:12px; border:1px dashed rgba(255,255,255,.14); text-align:center; font:400 13px 'Outfit',sans-serif; color:var(--text-faint); }
     .tickets-foot { margin-top:16px; padding-top:14px; border-top:1px solid var(--line); font:400 12.5px/1.6 'Outfit',sans-serif; color:var(--text-faint); }
@@ -450,6 +461,7 @@
     .wallet-option-tag { font:500 9px 'Space Grotesk',sans-serif; letter-spacing:.1em; color:var(--lilac); background:rgba(124,77,255,.15); padding:3px 8px; border-radius:99px; border:1px solid rgba(124,77,255,.3); white-space:nowrap; align-self:flex-start; }
     .nowallet-close { position:absolute; top:14px; right:16px; background:rgba(255,255,255,.06); border:none; color:var(--text-muted); font-size:16px; cursor:pointer; width:32px; height:32px; border-radius:99px; display:flex; align-items:center; justify-content:center; }
 
+    @media (max-width:900px) { nav.main-nav .nav-check { display:none; } }
     @media (max-width:640px) {
       nav.main-nav, .trust-row, .header-right .net-badge { display:none; }
       .mobile-menu-btn { display:flex; }
@@ -488,6 +500,7 @@
         <nav class="main-nav">
           <a href="#play" style="color:#fff">Play</a>
           <a href="#results">Results</a>
+          <a href="#myResults" class="nav-check">Check if you won</a>
           <a href="#how">How it works</a>
           <a href="#brackets">Prizes</a>
         </nav>
@@ -532,6 +545,7 @@
         <button class="btn-primary" onclick="document.getElementById('play').scrollIntoView({behavior:'smooth'})" id="heroPlayBtn">
           <span class="btn-primary-glow"></span>Buy Tickets
         </button>
+        <a class="btn-ghost" href="#myResults">Check if you won ↓</a>
         <a class="btn-ghost" href="#brackets">Prize brackets ↓</a>
       </div>
 
@@ -547,7 +561,7 @@
       <div class="stat-cell"><div class="mlab">Tickets sold</div><div class="val tabular" id="ticketsSold">0</div></div>
       <div class="stat-cell"><div class="mlab">Ticket price</div><div class="val tabular" id="ticketPriceStat">— <span class="unit">SOL</span></div></div>
       <div class="stat-cell"><div class="mlab">Round status</div><div class="val" id="roundStatusStat">—</div></div>
-      <div class="stat-cell"><div class="mlab">Your tickets</div><div class="val accent tabular" id="myTickets">0</div></div>
+      <div class="stat-cell"><div class="mlab" id="myTicketsStatLabel">Your tickets</div><div class="val accent tabular" id="myTickets">0</div></div>
     </section>
 
     <!-- CLAIM BANNER -->
@@ -633,7 +647,7 @@
           </div>
           <div class="my-tickets-list" id="myTicketsList"></div>
           <div class="tickets-empty" id="myTicketsEmpty">No tickets yet this round</div>
-          <div class="tickets-foot">Matches count from the first digit. Once a round is drawn, check and claim it under <strong>Your results</strong> — prizes stay claimable after the next round opens.</div>
+          <div class="tickets-foot">This card is the round running right now. Every round you have played — including past ones — is listed under <strong><a href="#myResults" style="color:var(--lilac)">Your results</a></strong>, where you can check each ticket and claim any prize. Matches count from the first digit.</div>
         </div>
       </div>
     </section>
@@ -693,14 +707,18 @@
         <div class="sub" id="resultsSubhead">No round drawn yet</div>
       </div>
 
-      <section class="card my-results" id="myResults" style="display:none">
+      <section class="card my-results" id="myResults">
         <div class="block-head" style="align-items:baseline">
           <div class="title">Your results</div>
           <div class="sub" id="myResultsCount">—</div>
         </div>
         <div id="myResultsList" style="margin-top:16px"></div>
-        <div class="results-empty" id="myResultsEmpty">You held no tickets in any round that has been drawn yet.</div>
-        <div class="tickets-foot" style="margin-top:14px">Checking is free and off-chain — your ticket numbers and the winning number are both already on chain. Only claiming needs a signature.</div>
+        <div class="results-empty" id="myResultsEmpty" style="display:none">You held no tickets in any round that has been drawn yet.</div>
+        <div class="mr-connect" id="myResultsConnect">
+          <p>Connect your wallet to check every round you have played — each ticket, whether it won, and any prize still unclaimed.</p>
+          <button class="btn-primary" onclick="handleConnectBtn(event)">Connect Wallet</button>
+        </div>
+        <div class="tickets-foot" style="margin-top:14px">Every round you have ever bought a ticket in is listed here, not just the current one. Checking is free and off-chain — your ticket numbers and the winning number are both already on chain. Only claiming needs a signature.</div>
       </section>
 
       <div class="winning-card">
@@ -760,7 +778,7 @@
       </div>
       <div class="footer-col">
         <div class="flab">Product</div>
-        <div class="flinks"><a href="#play">Buy tickets</a><a href="#results">Results</a><a href="#brackets">Prize brackets</a><a href="#how">How it works</a></div>
+        <div class="flinks"><a href="#play">Buy tickets</a><a href="#results">Results</a><a href="#myResults">Check if you won</a><a href="#brackets">Prize brackets</a><a href="#how">How it works</a></div>
       </div>
       <div class="footer-col">
         <div class="flab">Trust</div>
@@ -868,10 +886,12 @@
       // ~38 accounts is the real ceiling (packet-size derived), so purchases above
       // this are split into sequential transactions.
       MAX_TICKETS_PER_TX: 25,
-      // How many older rounds to scan for the Results section. Rounds 1-2 on devnet
-      // predate a Round-account layout upgrade and will fail to decode -- that's
-      // expected, not a bug (see fetchPastRounds).
-      PAST_ROUNDS_LOOKBACK: 12,
+      // How many older rounds to scan for the Results section. Fetched in a single
+      // getMultipleAccounts call, so this is one RPC round trip no matter how big it
+      // gets -- a full year of weekly draws costs the same as one round. Any round
+      // that fails to decode (e.g. it predates a Round-account layout upgrade) is
+      // silently skipped -- expected for old test rounds, not a bug.
+      PAST_ROUNDS_LOOKBACK: 52,
     };
 
     const BRACKET_META = [
@@ -1050,21 +1070,31 @@
         .map(({pubkey, account}) => ({ pubkey, ...decodeTicket(account.data) }))
         .filter(t => t.roundId === roundId);
     }
-    // Scans backward from the current round for older, settled rounds. Any round
-    // that fails to fetch/decode (e.g. it predates a Round-account layout upgrade)
-    // is silently skipped -- that's expected for old test rounds, not an error.
+    // Older settled rounds, newest first. Derives every round PDA in the lookback
+    // window up front and fetches them in ONE getMultipleAccounts call. The previous
+    // version awaited getAccountInfo per round inside a loop, so the lookback had to
+    // stay small (12) to keep the 20s refresh cheap -- which quietly made a wallet's
+    // oldest rounds unreachable. One batched call has no such trade-off.
     async function fetchPastRounds(conn, currentRoundId) {
-      const results = [];
-      let id = currentRoundId - 1n;
-      let attempts = 0;
-      while (id >= 1n && results.length < CONFIG.PAST_ROUNDS_LOOKBACK && attempts < CONFIG.PAST_ROUNDS_LOOKBACK * 2) {
-        attempts++;
-        try {
-          const r = await fetchRound(conn, id);
-          if (r && r.status === 'Claimable') results.push(r);
-        } catch (e) { /* stale layout or missing account -- skip */ }
-        id -= 1n;
+      const ids = [];
+      for (let id = currentRoundId - 1n; id >= 1n && ids.length < CONFIG.PAST_ROUNDS_LOOKBACK; id -= 1n) {
+        ids.push(id);
       }
+      if (!ids.length) return [];
+      const pdas = ids.map(roundPda);
+      // getMultipleAccounts caps at 100 keys per request.
+      const infos = [];
+      for (let i = 0; i < pdas.length; i += 100) {
+        infos.push(...await conn.getMultipleAccountsInfo(pdas.slice(i, i + 100)));
+      }
+      const results = [];
+      infos.forEach((info, i) => {
+        if (!info) return;                       // round never existed
+        try {
+          const r = decodeRound(info.data);
+          if (r.status === 'Claimable') results.push({ pubkey: pdas[i], ...r });
+        } catch (e) { /* stale layout -- skip */ }
+      });
       return results;
     }
 
@@ -1437,7 +1467,12 @@
         usdEl.style.visibility = 'visible';
       }
       document.getElementById('ticketsSold').textContent = round ? round.totalTickets : state.ticketsSold;
+      // Deliberately the CURRENT round only. The label names the round so a wallet
+      // holding past-round tickets reads "0 in round #7" instead of a bare "0" that
+      // looks like its whole history vanished; the history lives in Your results.
       document.getElementById('myTickets').textContent = round ? onchain.myCurrentTickets.length : state.myTickets.length;
+      const statLabel = document.getElementById('myTicketsStatLabel');
+      if (statLabel) statLabel.textContent = round ? `Your tickets · round #${round.roundId}` : 'Your tickets';
       document.getElementById('ticketPriceStat').innerHTML = round ? `${(Number(round.ticketPriceLamports)/1e9).toFixed(4)} <span class="unit">SOL</span>` : `— <span class="unit">SOL</span>`;
       document.getElementById('roundStatusStat').textContent = round ? round.status : '—';
     }
@@ -1484,8 +1519,12 @@
       const empty = document.getElementById('myTicketsEmpty');
       const round = onchain.round;
       const tickets = onchain.myCurrentTickets;
+      const past = onchain.myTickets.length - tickets.length;
       document.getElementById('myTicketsRoundLabel').textContent =
         round ? `${tickets.length} in round #${round.roundId}` : '0 tickets';
+      empty.textContent = past > 0
+        ? `No tickets yet this round — your ${past} ticket${past === 1 ? '' : 's'} from earlier rounds ${past === 1 ? 'is' : 'are'} under Your results below.`
+        : 'No tickets yet this round';
       if (!round || !tickets.length) {
         list.innerHTML = '';
         empty.style.display = 'block';
@@ -1508,6 +1547,22 @@
     // "did I win" costs no transaction and no signature.
     const revealedRounds = new Set();
 
+    const solStr = (lamports) => (Number(lamports) / 1e9).toFixed(4);
+
+    // Every ticket this wallet holds in `round`, each with its own verdict -- losers
+    // included. A ticket that is never drawn on screen is a ticket its owner cannot
+    // verify, which is the whole reason this card exists.
+    function myTicketResultsFor(round) {
+      return onchain.myTickets
+        .filter(t => t.roundId === round.roundId)
+        .sort((a, b) => a.ticketIndex - b.ticketIndex)
+        .map(t => {
+          const matched = leadingMatchCount(t.number, round.winningNumber);
+          const prize = matched > 0 ? round.bracketPrizesPerWinner[matched - 1] : 0n;
+          return { t, matched, prize, won: matched > 0 && prize > 0n };
+        });
+    }
+
     function winningTicketsFor(round, tickets) {
       return tickets
         .filter(t => t.roundId === round.roundId)
@@ -1526,13 +1581,20 @@
       const list = document.getElementById('myResultsList');
       const empty = document.getElementById('myResultsEmpty');
       const countLabel = document.getElementById('myResultsCount');
+      const connect = document.getElementById('myResultsConnect');
       if (!section) return;
 
+      // Always on screen, wallet or not: a "check if you won" that only exists once
+      // you are already connected is not a way in, it is a reward for finding one.
+      section.style.display = 'block';
       if (!state.walletAddress) {
-        section.style.display = 'none';
+        countLabel.textContent = 'connect to check';
+        list.innerHTML = '';
+        empty.style.display = 'none';
+        connect.style.display = 'block';
         return;
       }
-      section.style.display = 'block';
+      connect.style.display = 'none';
 
       const rounds = mySettledRounds();
       countLabel.textContent = rounds.length
@@ -1548,8 +1610,10 @@
 
       list.innerHTML = rounds.map(r => {
         const id = r.roundId.toString();
-        const mine = onchain.myTickets.filter(t => t.roundId === r.roundId);
-        const wins = winningTicketsFor(r, onchain.myTickets);
+        const mine = myTicketResultsFor(r);
+        const wins = mine.filter(m => m.won);
+        const unclaimed = wins.filter(m => !m.t.claimed);
+        const totalPrize = wins.reduce((sum, m) => sum + m.prize, 0n);
         const revealed = revealedRounds.has(id);
 
         const head = `<div class="mr-head">
@@ -1566,34 +1630,42 @@
           </div>`;
         }
 
-        if (!wins.length) {
-          return `<div class="mr-row">${head}
-            <div class="mr-nowin">${mine.length === 1
-              ? `No win this round — your ticket didn't match the first digit.`
-              : `No win this round — none of your ${mine.length} tickets matched the first digit.`} Better luck Thursday.</div>
-          </div>`;
-        }
+        const summary = wins.length
+          ? `<div class="mr-summary won">You won ${wins.length > 1 ? `${wins.length} prizes` : 'a prize'} in this round · ${solStr(totalPrize)} SOL${unclaimed.length ? '' : ' · all claimed'}</div>`
+          : `<div class="mr-summary">No win this round — ${mine.length === 1
+              ? `your ticket didn't match the first digit`
+              : `none of your ${mine.length} tickets matched the first digit`}. Better luck Thursday.</div>`;
 
-        const rows = wins
-          .sort((a,b) => Number(r.bracketPrizesPerWinner[b.matched-1] - r.bracketPrizesPerWinner[a.matched-1]))
-          .map(w => {
-            const prize = Number(r.bracketPrizesPerWinner[w.matched - 1]) / 1e9;
-            const label = (BRACKET_META[w.matched - 1] || {}).label || `Match first ${w.matched}`;
-            const digits = `<span class="my-ticket-digits">${w.t.number.map((d,i) =>
-              `<span class="digit-chip${i < w.matched ? ' hit' : ''}">${d}</span>`).join('')}</span>`;
-            const action = w.t.claimed
+        // Every ticket gets a row. Winners keep their bracket and Claim button;
+        // losers still show their digits and how far they matched, so the wallet can
+        // see exactly what it held and check the result for itself.
+        const rows = mine.map(m => {
+          const digits = `<span class="my-ticket-digits">${m.t.number.map((d, i) =>
+            `<span class="digit-chip${i < m.matched ? ' hit' : ''}">${d}</span>`).join('')}</span>`;
+          if (m.won) {
+            const label = (BRACKET_META[m.matched - 1] || {}).label || `Match first ${m.matched}`;
+            const action = m.t.claimed
               ? `<span class="my-ticket-status">claimed ✓</span>`
-              : `<button class="claim-btn" data-ticket="${w.t.pubkey.toBase58()}" data-round="${r.pubkey.toBase58()}">Claim</button>`;
-            return `<div class="mr-win">
-                ${digits}
-                <span class="mr-win-info"><span class="mr-bracket">${label}</span><span class="prize-tag">${prize.toFixed(4)} SOL</span></span>
+              : `<button class="claim-btn" data-ticket="${m.t.pubkey.toBase58()}" data-round="${r.pubkey.toBase58()}">Claim</button>`;
+            return `<div class="mr-ticket">${digits}
+                <span class="mr-ticket-info"><span class="mr-bracket">${label}</span><span class="prize-tag">${solStr(m.prize)} SOL</span></span>
                 ${action}
               </div>`;
-          }).join('');
+          }
+          // matched > 0 with a zero prize means nobody was paid in that bracket this
+          // round (it rolled over), so say that rather than implying a near miss won.
+          const detail = m.matched === 0
+            ? 'No matching digits'
+            : `Matched ${m.matched} digit${m.matched > 1 ? 's' : ''} · no prize in this bracket`;
+          return `<div class="mr-ticket">${digits}
+              <span class="mr-ticket-info"><span class="mr-bracket">${detail}</span></span>
+              <span class="mr-verdict">no win</span>
+            </div>`;
+        }).join('');
 
-        return `<div class="mr-row won">${head}
-          <div class="mr-wonlab">You won ${wins.length > 1 ? `${wins.length} prizes` : 'a prize'} in this round</div>
-          ${rows}
+        return `<div class="mr-row${wins.length ? ' won' : ''}">${head}
+          ${summary}
+          <div class="mr-tickets">${rows}</div>
         </div>`;
       }).join('');
 
