@@ -146,6 +146,26 @@
     .mobile-menu-btn span { display:block; width:15px; height:1.5px; background:rgba(237,233,255,.75); }
     .mobile-menu-btn span + span { margin-top:4px; }
 
+    /* Slide-down menu for the hamburger above. The .mobile-menu-btn rules had been
+       styled but never wired to anything, so below 640px the header carried no
+       navigation at all -- every link was reachable only from the footer.
+       <header> is position:sticky, which is a positioned ancestor, so the panel
+       anchors to it without any extra positioning.
+       The .open rule lives INSIDE the media query on purpose: if the menu is open and
+       the viewport widens past 640px, the panel disappears with the button instead of
+       being stranded over the desktop layout. */
+    #mobileNav {
+      display:none; position:absolute; left:0; right:0; top:100%; z-index:19;
+      background:rgba(7,6,15,.97); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+      border-bottom:1px solid var(--line); box-shadow:0 20px 50px -18px rgba(0,0,0,.8);
+    }
+    #mobileNav a {
+      padding:14px 20px; font:500 15px 'Outfit',sans-serif; color:var(--text-muted);
+      text-decoration:none; border-bottom:1px solid rgba(255,255,255,.05);
+    }
+    #mobileNav a:last-child { border-bottom:none; }
+    #mobileNav a:active { background:rgba(124,77,255,.16); color:#fff; }
+
     /* ── WALLET STATUS BAR — mobile connected indicator ───── */
     .wallet-bar { display:none; }
     .wallet-bar.show { display:block; position:sticky; top:63px; z-index:19; background:rgba(124,77,255,.14); border-bottom:1px solid rgba(124,77,255,.3); font:500 11px 'JetBrains Mono',monospace; color:var(--lilac); text-align:center; padding:6px; letter-spacing:.06em; }
@@ -466,6 +486,7 @@
     @media (max-width:640px) {
       nav.main-nav, .trust-row, .header-right .net-badge { display:none; }
       .mobile-menu-btn { display:flex; }
+      #mobileNav.open { display:flex; flex-direction:column; }
       .hero { padding-top:44px; }
       .countdown-row { gap:7px; }
       .cd-cell { flex:1; width:auto; }
@@ -504,8 +525,13 @@
           <a href="#myResults" class="nav-check">Check if you won</a>
           <a href="#how">How it works</a>
           <a href="#brackets">Prizes</a>
+          <a href="referrals.html">Referrals</a>
         </nav>
         <div class="net-badge" id="netBadge"><span class="net-dot"></span><span id="netBadgeLabel">Devnet</span></div>
+        <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileNav(event)"
+                aria-label="Menu" aria-controls="mobileNav" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
         <div class="wallet-pill-wrap">
           <button id="connectBtn" class="btn-primary" onclick="handleConnectBtn(event)">
             <span class="btn-primary-glow"></span>Connect Wallet
@@ -516,6 +542,14 @@
           </div>
         </div>
       </div>
+    </div>
+    <div id="mobileNav">
+      <a href="#play">Play</a>
+      <a href="#results">Results</a>
+      <a href="#myResults">Check if you won</a>
+      <a href="#how">How it works</a>
+      <a href="#brackets">Prizes</a>
+      <a href="referrals.html">Referrals</a>
     </div>
   </header>
 
@@ -559,7 +593,7 @@
 
     <!-- STATS BAR -->
     <section class="stats-bar">
-      <div class="stat-cell"><div class="mlab">Tickets sold</div><div class="val tabular" id="ticketsSoldAllTime">0</div><div class="sub" id="ticketsSoldRound"></div></div>
+      <div class="stat-cell"><div class="mlab">Tickets sold</div><div class="val tabular" id="ticketsSoldAllTime">0</div><div class="sub" id="ticketsSoldRound" hidden></div></div>
       <div class="stat-cell"><div class="mlab">Ticket price</div><div class="val tabular" id="ticketPriceStat">— <span class="unit">SOL</span></div></div>
       <div class="stat-cell"><div class="mlab">Round status</div><div class="val" id="roundStatusStat">—</div></div>
       <div class="stat-cell"><div class="mlab" id="myTicketsStatLabel">Your tickets</div><div class="val accent tabular" id="myTickets">0</div></div>
@@ -1428,6 +1462,38 @@
       }
     });
 
+    // ── Mobile menu ────────────────────────────────────────────────────────────
+    function closeMobileNav() {
+      const panel = document.getElementById('mobileNav');
+      const btn = document.getElementById('mobileMenuBtn');
+      if (panel) panel.classList.remove('open');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    }
+
+    function toggleMobileNav(e) {
+      // Without this the click reaches the document listener below, which would
+      // immediately close the panel the same tick it opened.
+      e.stopPropagation();
+      const panel = document.getElementById('mobileNav');
+      const btn = document.getElementById('mobileMenuBtn');
+      const open = panel.classList.toggle('open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    // Close after choosing something. The in-page links only move the scroll
+    // position, so a panel left open would sit on top of whatever was jumped to.
+    document.getElementById('mobileNav').addEventListener('click', function(e) {
+      if (e.target.closest('a')) closeMobileNav();
+    });
+
+    // Tapping anywhere else closes it, matching the wallet dropdown's behaviour.
+    document.addEventListener('click', function(e) {
+      const panel = document.getElementById('mobileNav');
+      if (!panel || !panel.classList.contains('open')) return;
+      if (panel.contains(e.target)) return;
+      closeMobileNav();
+    });
+
     function renderConnectedPill(short) {
       const btn = document.getElementById('connectBtn');
       btn.outerHTML = `<div class="wallet-pill-wrap"><div class="wallet-pill" id="connectBtn" onclick="handleConnectBtn(event)">
@@ -1646,7 +1712,19 @@
       const thisRoundEl = document.getElementById('ticketsSoldRound');
       const allTime = onchain.allTimeTickets || (round ? round.totalTickets : state.ticketsSold);
       allTimeEl.textContent = Number(allTime).toLocaleString();
-      thisRoundEl.textContent = round ? `${Number(round.totalTickets).toLocaleString()} this round` : '';
+      // The sub-line is hidden until the round has actually sold something. A fresh
+      // round legitimately sits at zero for a while, and "0 this round" reads as a
+      // dead game rather than a new one. Once the first ticket sells it appears and
+      // does the urgency job. Uses the hidden attribute, not textContent: an empty
+      // node would still occupy its margin and shift the row.
+      const roundTickets = round ? Number(round.totalTickets) : 0;
+      if (roundTickets > 0) {
+        thisRoundEl.textContent = `${roundTickets.toLocaleString()} this round`;
+        thisRoundEl.hidden = false;
+      } else {
+        thisRoundEl.textContent = '';
+        thisRoundEl.hidden = true;
+      }
       // Deliberately the CURRENT round only. The label names the round so a wallet
       // holding past-round tickets reads "0 in round #7" instead of a bare "0" that
       // looks like its whole history vanished; the history lives in Your results.
