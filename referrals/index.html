@@ -145,12 +145,17 @@
     <p>
       Only approved referrers earn. Self-referral does not count.
     </p>
+    <p>
+      The table below is <strong>all-time</strong>. Every week that settles is added to a
+      referrer's running totals, so these numbers only ever climb. The week in progress is
+      not counted until it settles at the Thursday draw.
+    </p>
   </div>
 
   <div class="totals">
-    <div class="tcell"><div class="lab">Referred tickets</div><div class="val" id="totTickets">—</div></div>
-    <div class="tcell"><div class="lab">Referred purchases</div><div class="val" id="totReferrals">—</div></div>
-    <div class="tcell"><div class="lab">Paid to referrers</div><div class="val gold" id="totEarned">—</div></div>
+    <div class="tcell"><div class="lab">Referrals all-time</div><div class="val" id="totReferrals">—</div></div>
+    <div class="tcell"><div class="lab">Tickets driven all-time</div><div class="val" id="totTickets">—</div></div>
+    <div class="tcell"><div class="lab">Weeks counted</div><div class="val gold" id="totWeeks">—</div></div>
   </div>
 
   <div class="board">
@@ -162,7 +167,6 @@
             <th>Referrer</th>
             <th class="num">Referrals</th>
             <th class="num">Tickets driven</th>
-            <th class="num">Earned</th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
@@ -206,23 +210,10 @@
 
   var $ = function (id) { return document.getElementById(id); };
 
-  // Format lamports without ever going through a float. 212500000 must read 0.2125,
-  // not 0.212 — these are amounts actually paid to people, and a float round trip
-  // silently shaves the last digit. Truncates at 4 decimals rather than rounding, so
-  // a figure shown as earned is never rounded up past what was really paid.
-  function sol(lamports) {
-    var s = String(lamports == null ? '0' : lamports);
-    if (!/^[0-9]+$/.test(s)) return '0 SOL';
-    s = s.length < 10 ? new Array(10 - s.length + 1).join('0') + s : s;
-    var whole = s.slice(0, s.length - 9).replace(/^0+(?=[0-9])/, '');
-    var frac9 = s.slice(s.length - 9);
-    var frac = frac9.slice(0, 4).replace(/0+$/, '');
-    var droppedNonZero = frac9.slice(4).replace(/0+$/, '') !== '';
-    if (whole === '0' && frac === '') {
-      return droppedNonZero ? '<0.0001 SOL' : '0 SOL';
-    }
-    return whole + (frac ? '.' + frac : '') + ' SOL';
-  }
+  // No SOL amount is rendered on this page. Earnings are settled weekly and can be
+  // zeroed by the per-period cap or by EXCLUDED_FROM_PAYOUT, so showing a figure here
+  // would invite reading it as "owed right now". The board shows activity — referrals
+  // and tickets driven — and nothing about money.
 
   function shortKey(k) {
     return k && k.length > 12 ? k.slice(0, 4) + '…' + k.slice(-4) : (k || '');
@@ -240,9 +231,9 @@
     // Clear a stale error banner if an earlier attempt failed and this one worked.
     if (!isDemo) $('banner').className = 'banner';
 
-    $('totTickets').textContent   = (data.totals.tickets || 0).toLocaleString();
     $('totReferrals').textContent = (data.totals.referrals || 0).toLocaleString();
-    $('totEarned').textContent    = sol(data.totals.earnedLamports);
+    $('totTickets').textContent   = (data.totals.tickets || 0).toLocaleString();
+    $('totWeeks').textContent     = (data.periods || 0).toLocaleString();
 
     // Be precise about what "as of" means: these figures are published after each
     // weekly draw, so they are not a live read. Saying otherwise would overclaim.
@@ -250,7 +241,7 @@
       $('asOf').textContent = 'Sample data for layout preview';
     } else if (data.asOf) {
       var d = new Date(data.asOf);
-      $('asOf').textContent = 'Figures published after the draw of '
+      $('asOf').textContent = 'All-time totals through the draw of '
         + d.toISOString().slice(0, 10) + ' · updated weekly, not live';
     } else {
       $('asOf').textContent = 'No periods published yet';
@@ -308,15 +299,10 @@
       tdTickets.className = 'num';
       tdTickets.textContent = (r.tickets || 0).toLocaleString();
 
-      var tdEarned = document.createElement('td');
-      tdEarned.className = 'num earned';
-      tdEarned.textContent = sol(r.earnedLamports);
-
       tr.appendChild(tdRank);
       tr.appendChild(tdWho);
       tr.appendChild(tdRefs);
       tr.appendChild(tdTickets);
-      tr.appendChild(tdEarned);
       tbody.appendChild(tr);
     });
 
@@ -329,29 +315,28 @@
   // state instead, because fake figures on a public leaderboard would be a lie about
   // how much the lottery is being played.
   function demoData() {
-    var mk = function (name, code, referrals, tickets, driven, earned) {
+    var mk = function (name, code, referrals, tickets, driven) {
       return { pubkey: 'Demo' + name, name: name, code: code, picPath: '',
                referrals: referrals, tickets: tickets,
-               referredLamports: String(Math.round(driven * 1e9)),
-               earnedLamports: String(Math.round(earned * 1e9)) };
+               referredLamports: String(Math.round(driven * 1e9)) };
     };
     var rows = [
-      mk('Moonshot Mike', 'moonshot', 34, 412, 20.6, 1.03),
-      mk('Lucky Seven', 'lucky7', 21, 268, 13.4, 0.67),
-      mk('Orbit Ana', 'orbit', 17, 150, 7.5, 0.375),
-      mk('Nova Ken', 'nova', 9, 74, 3.7, 0.185),
-      mk('Quiet Quinn', 'quinn', 3, 12, 0.6, 0.03),
+      mk('Moonshot Mike', 'moonshot', 34, 412, 20.6),
+      mk('Lucky Seven', 'lucky7', 21, 268, 13.4),
+      mk('Orbit Ana', 'orbit', 17, 150, 7.5),
+      mk('Nova Ken', 'nova', 9, 74, 3.7),
+      mk('Quiet Quinn', 'quinn', 3, 12, 0.6),
     ];
     rows.forEach(function (r, i) { r.rank = i + 1; });
     return {
       leaderboard: rows,
       asOf: new Date().toISOString(),
+      periods: 6,
       totals: {
         referrers: rows.length,
         referrals: rows.reduce(function (a, r) { return a + r.referrals; }, 0),
         tickets: rows.reduce(function (a, r) { return a + r.tickets; }, 0),
         referredLamports: String(rows.reduce(function (a, r) { return a + Number(r.referredLamports); }, 0)),
-        earnedLamports: String(rows.reduce(function (a, r) { return a + Number(r.earnedLamports); }, 0)),
       },
     };
   }
