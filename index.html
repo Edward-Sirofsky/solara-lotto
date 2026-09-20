@@ -525,7 +525,7 @@
           <a href="#myResults" class="nav-check">Check if you won</a>
           <a href="#how">How it works</a>
           <a href="#brackets">Prizes</a>
-          <a href="referrals.html">Referrals</a>
+          <a href="/referrals/">Referrals</a>
         </nav>
         <div class="net-badge" id="netBadge"><span class="net-dot"></span><span id="netBadgeLabel">Devnet</span></div>
         <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileNav(event)"
@@ -549,7 +549,7 @@
       <a href="#myResults">Check if you won</a>
       <a href="#how">How it works</a>
       <a href="#brackets">Prizes</a>
-      <a href="referrals.html">Referrals</a>
+      <a href="/referrals/">Referrals</a>
     </div>
   </header>
 
@@ -593,7 +593,7 @@
 
     <!-- STATS BAR -->
     <section class="stats-bar">
-      <div class="stat-cell"><div class="mlab">Tickets sold</div><div class="val tabular" id="ticketsSoldAllTime">0</div><div class="sub" id="ticketsSoldRound" hidden></div></div>
+      <div class="stat-cell"><div class="mlab">Tickets sold</div><div class="val tabular" id="ticketsSoldAllTime">0</div></div>
       <div class="stat-cell"><div class="mlab">Ticket price</div><div class="val tabular" id="ticketPriceStat">— <span class="unit">SOL</span></div></div>
       <div class="stat-cell"><div class="mlab">Round status</div><div class="val" id="roundStatusStat">—</div></div>
       <div class="stat-cell"><div class="mlab" id="myTicketsStatLabel">Your tickets</div><div class="val accent tabular" id="myTickets">0</div></div>
@@ -813,7 +813,7 @@
       </div>
       <div class="footer-col">
         <div class="flab">Product</div>
-        <div class="flinks"><a href="#play">Buy tickets</a><a href="#results">Results</a><a href="#myResults">Check if you won</a><a href="#brackets">Prize brackets</a><a href="referrals.html">Referral leaderboard</a><a href="#how">How it works</a></div>
+        <div class="flinks"><a href="#play">Buy tickets</a><a href="#results">Results</a><a href="#myResults">Check if you won</a><a href="#brackets">Prize brackets</a><a href="/referrals/">Referral leaderboard</a><a href="#how">How it works</a></div>
       </div>
       <div class="footer-col">
         <div class="flab">Trust</div>
@@ -1703,28 +1703,13 @@
         usdEl.style.visibility = 'visible';
       }
       // Headline is the all-time total, so the number never drops back to 0 at the
-      // start of a round; the current round's count sits underneath, where it still
-      // does the urgency job. Both are live on-chain reads -- the all-time figure is
-      // total_tickets summed across every Round account, taken from the batched fetch
-      // the Results section already makes. Nothing here is a stored or seeded tally,
-      // so it cannot drift from the chain and needs no "approximate" caveat.
+      // start of a round. It is a live on-chain read -- total_tickets summed across
+      // every Round account, taken from the batched fetch the Results section already
+      // makes. Nothing here is a stored or seeded tally, so it cannot drift from the
+      // chain and needs no "approximate" caveat.
       const allTimeEl = document.getElementById('ticketsSoldAllTime');
-      const thisRoundEl = document.getElementById('ticketsSoldRound');
       const allTime = onchain.allTimeTickets || (round ? round.totalTickets : state.ticketsSold);
       allTimeEl.textContent = Number(allTime).toLocaleString();
-      // The sub-line is hidden until the round has actually sold something. A fresh
-      // round legitimately sits at zero for a while, and "0 this round" reads as a
-      // dead game rather than a new one. Once the first ticket sells it appears and
-      // does the urgency job. Uses the hidden attribute, not textContent: an empty
-      // node would still occupy its margin and shift the row.
-      const roundTickets = round ? Number(round.totalTickets) : 0;
-      if (roundTickets > 0) {
-        thisRoundEl.textContent = `${roundTickets.toLocaleString()} this round`;
-        thisRoundEl.hidden = false;
-      } else {
-        thisRoundEl.textContent = '';
-        thisRoundEl.hidden = true;
-      }
       // Deliberately the CURRENT round only. The label names the round so a wallet
       // holding past-round tickets reads "0 in round #7" instead of a bare "0" that
       // looks like its whole history vanished; the history lives in Your results.

@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Referral Leaderboard — SOLARA</title>
+<meta name="description" content="SOLARA referral leaderboard — who is bringing new players to the on-chain lottery, and what they have earned.">
+<style>
+  :root {
+    --bg: #0a0a17;
+    --panel: rgba(255,255,255,0.03);
+    --panel2: rgba(255,255,255,0.05);
+    --border: rgba(255,255,255,0.08);
+    --text: #e6e6f0;
+    --muted: #9a9ab5;
+    --faint: #6f6f8c;
+    --accent: #8b7bff;
+    --accent2: #4db8ff;
+    --gold: #f5c56b;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: radial-gradient(1200px 600px at 50% -10%, #1b1440 0%, var(--bg) 60%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.65;
+    padding: 0 20px 80px;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  header {
+    padding: 48px 0 24px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+  .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; flex-shrink: 0; }
+  .brand img.coin { width: 32px; height: 32px; display: block; }
+  .brand img.wordmark { height: 16px; display: block; mix-blend-mode: screen; }
+  h1 { font-size: 30px; margin: 28px 0 6px; }
+  .sub { color: var(--muted); font-size: 14.5px; margin: 0 0 4px; }
+  .asof { color: var(--faint); font-size: 13px; margin-bottom: 28px; }
+  a { color: var(--accent2); }
+
+  .intro {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px 22px; margin-bottom: 26px;
+  }
+  .intro h2 { font-size: 15px; margin: 0 0 10px; color: #fff; letter-spacing: .02em; }
+  .intro p { font-size: 14.5px; margin: 0 0 10px; color: var(--muted); }
+  .intro p:last-child { margin-bottom: 0; }
+  .intro strong { color: var(--text); }
+
+  .banner {
+    border-radius: 12px; padding: 13px 18px; margin-bottom: 22px;
+    font-size: 14px; display: none;
+  }
+  .banner.demo {
+    display: block;
+    background: rgba(245,197,107,.12); border: 1px solid rgba(245,197,107,.4); color: var(--gold);
+  }
+  .banner.error {
+    display: block;
+    background: rgba(255,107,122,.1); border: 1px solid rgba(255,107,122,.35); color: #ff9aa5;
+  }
+
+  .totals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 26px; }
+  @media (max-width: 620px) { .totals { grid-template-columns: 1fr; } }
+  .tcell {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 15px 18px;
+  }
+  .tcell .lab { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
+  .tcell .val { font-size: 23px; font-weight: 700; margin-top: 5px; font-variant-numeric: tabular-nums; }
+  .tcell .val.gold { color: var(--gold); }
+
+  .board { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .scroller { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 560px; }
+  th {
+    text-align: left; font-size: 11px; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--faint); font-weight: 600; padding: 15px 16px; border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td { padding: 14px 16px; border-bottom: 1px solid var(--border); font-size: 14.5px; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  .rank { color: var(--faint); font-weight: 700; width: 46px; font-variant-numeric: tabular-nums; }
+  .rank.top { color: var(--gold); }
+  .who { display: flex; align-items: center; gap: 11px; min-width: 190px; }
+  .pic {
+    width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex: none;
+    background: var(--panel2); border: 1px solid var(--border);
+  }
+  .nm { font-weight: 650; line-height: 1.3; }
+  .cd { color: var(--gold); font-size: 12px; line-height: 1.3; }
+  .earned { color: var(--gold); font-weight: 650; }
+  .usd { color: var(--faint); font-size: 12px; }
+
+  .empty { padding: 44px 20px; text-align: center; color: var(--muted); font-size: 15px; }
+  .empty .big { display: block; color: var(--text); font-size: 17px; margin-bottom: 8px; font-weight: 600; }
+
+  .join {
+    margin-top: 26px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px 22px; font-size: 14.5px; color: var(--muted);
+  }
+  .join strong { color: var(--text); }
+
+  footer {
+    margin-top: 44px; padding-top: 22px; border-top: 1px solid var(--border);
+    color: var(--faint); font-size: 13px; text-align: center;
+  }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <a class="brand" href="/">
+      <img class="coin" src="/assets/solara-coin.png" alt="SOLARA" />
+      <img class="wordmark" src="/assets/solara-wordmark-only.png" alt="SOLARA" />
+    </a>
+    <h1>Referral Leaderboard</h1>
+    <p class="sub">Who is bringing new players to the draw.</p>
+    <p class="asof" id="asOf">Loading…</p>
+  </header>
+
+  <div class="banner" id="banner"></div>
+
+  <div class="intro">
+    <h2>How referral rewards work</h2>
+    <p>
+      <strong>The prize pool is never touched.</strong> Every ticket still puts 100% of its
+      price into the round on-chain, and 80% of every pool still goes to players. Referral
+      rewards come out of the 20% operator fee, not out of the prizes.
+    </p>
+    <p>
+      A referred ticket pays its referrer <strong>5% of the ticket price</strong>. Referrals are
+      attributed on-chain: a referred purchase carries the referrer's wallet in a memo on the
+      same transaction that buys the tickets, so every figure below traces back to a real
+      transaction. Rewards are paid in SOL after each weekly draw.
+    </p>
+    <p>
+      Only approved referrers earn. Self-referral does not count.
+    </p>
+  </div>
+
+  <div class="totals">
+    <div class="tcell"><div class="lab">Referred tickets</div><div class="val" id="totTickets">—</div></div>
+    <div class="tcell"><div class="lab">Referred purchases</div><div class="val" id="totReferrals">—</div></div>
+    <div class="tcell"><div class="lab">Paid to referrers</div><div class="val gold" id="totEarned">—</div></div>
+  </div>
+
+  <div class="board">
+    <div class="scroller">
+      <table id="table" hidden>
+        <thead>
+          <tr>
+            <th class="num">#</th>
+            <th>Referrer</th>
+            <th class="num">Referrals</th>
+            <th class="num">Tickets driven</th>
+            <th class="num">Earned</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="empty"><span class="big">Loading leaderboard…</span></div>
+  </div>
+
+  <div class="join">
+    <strong>Want to be listed?</strong> Our referral program is exclusive and hand-selected.
+    If you have a strong community and think you'd be a great fit, email
+    <a href="mailto:contact@solaralotto.io">contact@solaralotto.io</a> with your socials, your
+    past work, why we should pick you, and the wallet you want rewards paid to. We review
+    every applicant personally.
+  </div>
+
+  <footer>
+    SOLARA · On-chain lottery on Solana ·
+    <a href="/">Play</a> ·
+    <a href="/terms.html">Terms</a> ·
+    <a href="/privacy.html">Privacy</a> ·
+    <a href="/copyright.html">Copyright</a>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  // The leaderboard reads ONE cached endpoint rather than scanning transaction
+  // history in the visitor's browser. The numbers are published by the off-chain
+  // payout engine after each weekly draw — the same figures it used to decide what to
+  // pay — so a page load costs one small JSON fetch instead of a chain scan per visitor.
+  var API = 'https://solara-referral-api.phaseoneclawd.workers.dev';
+
+  // Referrer pictures are hosted on this site, so the registry stores a path, never an
+  // external URL — an off-site image would leak every visitor's IP to that host. The
+  // shape is re-checked here as well as on write; in particular "//evil.com/x.png"
+  // starts with "/" but fails this pattern, and as an <img src> it would have loaded
+  // from that host.
+  var PIC_PATH_RE = /^\/assets\/referrers\/[A-Za-z0-9_-]{1,64}\.(png|jpg|jpeg|webp|gif)$/i;
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  // Format lamports without ever going through a float. 212500000 must read 0.2125,
+  // not 0.212 — these are amounts actually paid to people, and a float round trip
+  // silently shaves the last digit. Truncates at 4 decimals rather than rounding, so
+  // a figure shown as earned is never rounded up past what was really paid.
+  function sol(lamports) {
+    var s = String(lamports == null ? '0' : lamports);
+    if (!/^[0-9]+$/.test(s)) return '0 SOL';
+    s = s.length < 10 ? new Array(10 - s.length + 1).join('0') + s : s;
+    var whole = s.slice(0, s.length - 9).replace(/^0+(?=[0-9])/, '');
+    var frac9 = s.slice(s.length - 9);
+    var frac = frac9.slice(0, 4).replace(/0+$/, '');
+    var droppedNonZero = frac9.slice(4).replace(/0+$/, '') !== '';
+    if (whole === '0' && frac === '') {
+      return droppedNonZero ? '<0.0001 SOL' : '0 SOL';
+    }
+    return whole + (frac ? '.' + frac : '') + ' SOL';
+  }
+
+  function shortKey(k) {
+    return k && k.length > 12 ? k.slice(0, 4) + '…' + k.slice(-4) : (k || '');
+  }
+
+  function banner(kind, text) {
+    var el = $('banner');
+    el.className = 'banner ' + kind;
+    el.textContent = text;
+  }
+
+  function render(data, isDemo) {
+    var rows = data.leaderboard || [];
+
+    // Clear a stale error banner if an earlier attempt failed and this one worked.
+    if (!isDemo) $('banner').className = 'banner';
+
+    $('totTickets').textContent   = (data.totals.tickets || 0).toLocaleString();
+    $('totReferrals').textContent = (data.totals.referrals || 0).toLocaleString();
+    $('totEarned').textContent    = sol(data.totals.earnedLamports);
+
+    // Be precise about what "as of" means: these figures are published after each
+    // weekly draw, so they are not a live read. Saying otherwise would overclaim.
+    if (isDemo) {
+      $('asOf').textContent = 'Sample data for layout preview';
+    } else if (data.asOf) {
+      var d = new Date(data.asOf);
+      $('asOf').textContent = 'Figures published after the draw of '
+        + d.toISOString().slice(0, 10) + ' · updated weekly, not live';
+    } else {
+      $('asOf').textContent = 'No periods published yet';
+    }
+
+    var tbody = $('rows');
+    tbody.textContent = '';
+
+    if (rows.length === 0) {
+      $('table').hidden = true;
+      $('empty').hidden = false;
+      $('empty').textContent = '';
+      var big = document.createElement('span');
+      big.className = 'big';
+      big.textContent = 'No referral activity yet';
+      var p = document.createTextNode('The first referred ticket will show up here after the next weekly draw.');
+      $('empty').appendChild(big);
+      $('empty').appendChild(p);
+      return;
+    }
+
+    rows.forEach(function (r) {
+      var tr = document.createElement('tr');
+
+      var tdRank = document.createElement('td');
+      tdRank.className = 'num rank' + (r.rank <= 3 ? ' top' : '');
+      tdRank.textContent = r.rank;
+
+      var tdWho = document.createElement('td');
+      var who = document.createElement('div');
+      who.className = 'who';
+      var img = document.createElement('img');
+      img.className = 'pic';
+      img.alt = '';
+      img.loading = 'lazy';
+      if (r.picPath && PIC_PATH_RE.test(r.picPath)) img.src = r.picPath;
+      who.appendChild(img);
+      var names = document.createElement('div');
+      var nm = document.createElement('div');
+      nm.className = 'nm';
+      nm.textContent = r.name;
+      var cd = document.createElement('div');
+      cd.className = 'cd';
+      cd.textContent = r.code ? '@' + r.code : shortKey(r.pubkey);
+      names.appendChild(nm);
+      names.appendChild(cd);
+      who.appendChild(names);
+      tdWho.appendChild(who);
+
+      var tdRefs = document.createElement('td');
+      tdRefs.className = 'num';
+      tdRefs.textContent = (r.referrals || 0).toLocaleString();
+
+      var tdTickets = document.createElement('td');
+      tdTickets.className = 'num';
+      tdTickets.textContent = (r.tickets || 0).toLocaleString();
+
+      var tdEarned = document.createElement('td');
+      tdEarned.className = 'num earned';
+      tdEarned.textContent = sol(r.earnedLamports);
+
+      tr.appendChild(tdRank);
+      tr.appendChild(tdWho);
+      tr.appendChild(tdRefs);
+      tr.appendChild(tdTickets);
+      tr.appendChild(tdEarned);
+      tbody.appendChild(tr);
+    });
+
+    $('empty').hidden = true;
+    $('table').hidden = false;
+  }
+
+  // Sample data, shown ONLY with ?demo=1 and always behind a banner saying so. The
+  // live page never invents numbers: with no real activity it shows an honest empty
+  // state instead, because fake figures on a public leaderboard would be a lie about
+  // how much the lottery is being played.
+  function demoData() {
+    var mk = function (name, code, referrals, tickets, driven, earned) {
+      return { pubkey: 'Demo' + name, name: name, code: code, picPath: '',
+               referrals: referrals, tickets: tickets,
+               referredLamports: String(Math.round(driven * 1e9)),
+               earnedLamports: String(Math.round(earned * 1e9)) };
+    };
+    var rows = [
+      mk('Moonshot Mike', 'moonshot', 34, 412, 20.6, 1.03),
+      mk('Lucky Seven', 'lucky7', 21, 268, 13.4, 0.67),
+      mk('Orbit Ana', 'orbit', 17, 150, 7.5, 0.375),
+      mk('Nova Ken', 'nova', 9, 74, 3.7, 0.185),
+      mk('Quiet Quinn', 'quinn', 3, 12, 0.6, 0.03),
+    ];
+    rows.forEach(function (r, i) { r.rank = i + 1; });
+    return {
+      leaderboard: rows,
+      asOf: new Date().toISOString(),
+      totals: {
+        referrers: rows.length,
+        referrals: rows.reduce(function (a, r) { return a + r.referrals; }, 0),
+        tickets: rows.reduce(function (a, r) { return a + r.tickets; }, 0),
+        referredLamports: String(rows.reduce(function (a, r) { return a + Number(r.referredLamports); }, 0)),
+        earnedLamports: String(rows.reduce(function (a, r) { return a + Number(r.earnedLamports); }, 0)),
+      },
+    };
+  }
+
+  function isDemo() {
+    try { return new URLSearchParams(window.location.search).get('demo') === '1'; }
+    catch (e) { return false; }
+  }
+
+  (async function load() {
+    if (isDemo()) {
+      banner('demo', 'Sample data — this is a layout preview, not real referral activity.');
+      render(demoData(), true);
+      return;
+    }
+    try {
+      var res = await fetch(API + '/api/leaderboard', { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      render(await res.json(), false);
+    } catch (e) {
+      banner('error', 'Could not load the leaderboard right now. Please try again shortly.');
+      $('asOf').textContent = '';
+      $('empty').hidden = false;
+      $('empty').textContent = '';
+      var big = document.createElement('span');
+      big.className = 'big';
+      big.textContent = 'Leaderboard unavailable';
+      $('empty').appendChild(big);
+      $('table').hidden = true;
+    }
+  })();
+})();
+</script>
+</body>
+</html>
