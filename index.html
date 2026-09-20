@@ -1016,10 +1016,20 @@
     // Supporting it needs a native deep-link change, deliberately out of scope here.
     const REFERRAL_KEY = 'solara.ref';            // resolved wallet
     const REFERRAL_CODE_KEY = 'solara.ref.code';  // code still awaiting resolution
+    // The code that produced the stored wallet, kept after resolution rather than
+    // cleared. A referrer's wallet is never put in a URL, so the code is the only thing
+    // that can be forwarded into Phantom's in-app browser -- see referralLinkParam().
+    // REFERRAL_CODE_KEY cannot serve this: it means "still unresolved" and is cleared
+    // the moment the lookup succeeds.
+    const REFERRAL_SRC_CODE_KEY = 'solara.ref.code.src';
 
     // Set whenever a referrer is resolved, so a referral still works within the same
     // page session even if localStorage throws (private browsing, blocked site data).
     let referrerFallback = null;
+
+    // The raw ?ref= this page was opened with. Only used to forward the referrer when
+    // localStorage is blocked, and only after it is confirmed to be a code, not a wallet.
+    let capturedRefParam = null;
 
     // Shape check only — base58 alphabet, 32-byte-key length range.
     const BASE58_PUBKEY_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
@@ -1031,11 +1041,16 @@
       try { return new solanaWeb3.PublicKey(v).toBase58() === v; } catch (e) { return false; }
     }
 
-    function rememberReferrer(pubkey) {
+    // `code` is the registry code this wallet came from, when there was one. A visitor
+    // who arrived with ?ref=<wallet> has no code, and nothing is stored for forwarding:
+    // that referral simply does not survive the hop into Phantom's browser, which is the
+    // accepted cost of never putting a wallet in a URL.
+    function rememberReferrer(pubkey, code) {
       referrerFallback = pubkey;
       try {
         localStorage.setItem(REFERRAL_KEY, pubkey);
         localStorage.removeItem(REFERRAL_CODE_KEY);
+        if (code) localStorage.setItem(REFERRAL_SRC_CODE_KEY, code);
       } catch (e) { /* storage blocked */ }
     }
 
@@ -1050,7 +1065,10 @@
         const match = (data.referrers || []).find(
           r => String(r.code || '').toLowerCase() === wanted);
         if (!match || !looksLikePubkey(match.pubkey)) return;
-        rememberReferrer(match.pubkey);
+        // Prefer the registry's own spelling of the code, so the forwarded link is the
+        // canonical one; fall back to what the visitor arrived with, already validated.
+        const canonical = (match.code && REFERRAL_CODE_RE.test(match.code)) ? match.code : code;
+        rememberReferrer(match.pubkey, canonical);
       } catch (e) {
         // Worker down, offline, CORS, blocked — no referral, purchase unaffected.
       }
@@ -1062,6 +1080,7 @@
         raw = new URLSearchParams(window.location.search).get('ref');
       } catch (e) { return; }
       raw = (raw || '').trim();
+      if (raw) capturedRefParam = raw;
 
       if (!raw) {
         // No ?ref= this visit. If an earlier visit captured a code that never resolved
@@ -1093,6 +1112,47 @@
         if (v) return v;
       } catch (e) { /* storage blocked */ }
       return referrerFallback;
+    }
+
+    // The referral CODE to carry into Phantom's in-app browser as ?ref=, or null.
+    //
+    // Phantom's browser is a separate browser with its OWN localStorage: nothing this
+    // page stored is visible in there. The query string is the only thing that crosses,
+    // so without this the referrer is silently lost on every mobile-web purchase.
+    //
+    // Only ever a code, never a wallet. Forwarding the resolved wallet would be simpler
+    // and would skip a registry lookup, but it would also print a referrer's address in
+    // the address bar of every person they refer. The in-app browser resolves the code
+    // itself, exactly as the desktop path does.
+    function referralLinkParam() {
+      let code = null;
+      try {
+        code = localStorage.getItem(REFERRAL_SRC_CODE_KEY) || localStorage.getItem(REFERRAL_CODE_KEY);
+      } catch (e) { /* storage blocked */ }
+      code = (code || capturedRefParam || '').trim();
+      if (!code) return null;
+
+      // A 32-character value can satisfy both shapes, so the wallet shape is rejected
+      // first and the code rule then has to pass on its own. Anything that could be a
+      // pubkey leaves here as null rather than going into a URL.
+      if (BASE58_PUBKEY_RE.test(code)) return null;
+      if (!REFERRAL_CODE_RE.test(code)) return null;
+      return code;
+    }
+
+    // The Phantom universal link that opens this site inside Phantom's in-app browser,
+    // with the referral code carried through.
+    //
+    // Two different `ref`s are in play here, which is easy to misread:
+    //   - the one INSIDE the encoded target URL is OUR referral code;
+    //   - the trailing `?ref=` is PHANTOM'S own parameter, the referring dapp's origin,
+    //     which the universal link is rejected without. It is not a referral code.
+    function phantomBrowseUrl() {
+      const site = CONFIG.APP_URI.endsWith('/') ? CONFIG.APP_URI : CONFIG.APP_URI + '/';
+      const code = referralLinkParam();
+      const target = code ? site + '?ref=' + encodeURIComponent(code) : site;
+      return 'https://phantom.app/ul/browse/' + encodeURIComponent(target)
+        + '?ref=' + encodeURIComponent(site);
     }
 
     // Returns the memo instruction for this purchase, or null when there is nothing to
@@ -1578,14 +1638,12 @@
         // fire an MWA association intent for any Android UA, which opened Phantom,
         // failed the handshake, and bounced back to the "install Phantom" message
         // below. Send the user into Phantom's browser instead, where branch 1
-        // connects normally. The universal link needs a percent-encoded target and
-        // is rejected without `ref`. The isPhantom guard leaves branch 3 free to
-        // handle an old in-app build rather than deeplinking it into itself.
+        // connects normally. The isPhantom guard leaves branch 3 free to handle an old
+        // in-app build rather than deeplinking it into itself. phantomBrowseUrl() carries
+        // the referral code across into that browser, which has its own localStorage.
         if (!result && !IS_NATIVE_APP && state.isMobile && !window.solana?.isPhantom) {
-          const site = CONFIG.APP_URI.endsWith('/') ? CONFIG.APP_URI : CONFIG.APP_URI + '/';
           resetBtn();
-          window.location.href = 'https://phantom.app/ul/browse/'
-            + encodeURIComponent(site) + '?ref=' + encodeURIComponent(site);
+          window.location.href = phantomBrowseUrl();
           return;
         }
 
@@ -2350,7 +2408,10 @@
           showToast(rejected ? 'Connection rejected' : 'Phantom not available', 'error');
         });
       } else if (/Android/i.test(navigator.userAgent)) {
-        window.location.href = 'https://phantom.app/ul/v1/browse/https%3A%2F%2Fsolaralotto.io%2F';
+        // Same link as connectWallet's branch 2: carries the referral code through, and
+        // uses the form that actually carries Phantom's own `ref` param. The URL this
+        // used to hardcode had neither.
+        window.location.href = phantomBrowseUrl();
       } else {
         window.open('https://phantom.app', '_blank');
         showToast('Install Phantom then try again', 'info');
