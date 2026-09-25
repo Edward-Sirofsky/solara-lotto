@@ -87,7 +87,7 @@
   </header>
 
   <h1>Terms of Use</h1>
-  <div class="updated">Last updated: 21 August 2026</div>
+  <div class="updated">Last updated: 25 September 2026</div>
 
   <div class="intro">
     <p style="margin:0">These Terms of Use ("Terms") govern your access to and use of SOLARA — a decentralized, on-chain lottery protocol operating on the Solana blockchain, together with the SOLARA website, mobile application, and related interfaces (collectively, the "Service"). By accessing or using the Service, connecting a wallet, or purchasing a ticket, you agree to be bound by these Terms. If you do not agree, do not use the Service.</p>
@@ -121,7 +121,7 @@
   <h2><span class="num">5.</span>How the Lottery Works</h2>
   <ul>
     <li><strong>Tickets.</strong> You purchase a ticket by paying the ticket price in SOL through a connected wallet. Each ticket is assigned a random 6-digit number.</li>
-    <li><strong>Draws.</strong> A winning number is drawn on a recurring schedule (currently weekly). The winning number is generated using an on-chain commit-reveal randomness mechanism derived from Solana slot hashes.</li>
+    <li><strong>Draws.</strong> A winning number is drawn on a recurring schedule (currently weekly). The winning number is generated from verifiable randomness (VRF) supplied by MagicBlock's VRF oracle; the randomness proof is verified on-chain by MagicBlock's VRF program before the lottery program uses the result.</li>
     <li><strong>Prizes.</strong> Prizes are awarded by matching digits of your ticket against the winning number, from left to right, across defined prize brackets. A portion of the total pool is allocated to each bracket.</li>
     <li><strong>Operator fee.</strong> An operator fee (currently 20% of the pool) is applied to fund draws and operations. The fee is subject to change; the current fee is shown in the interface.</li>
     <li><strong>Claiming.</strong> Prizes are not paid automatically. If you win, you must claim your prize by submitting a signed transaction from the winning wallet. Prizes remain claimable while the relevant round is open for claims.</li>
@@ -147,7 +147,7 @@
     <li>the value of SOL and other digital assets is volatile and may decline;</li>
     <li>blockchain transactions are irreversible and final; errors cannot be undone;</li>
     <li>smart contracts may contain bugs, vulnerabilities, or economic exploits despite testing and audits;</li>
-    <li>the randomness mechanism relies on blockchain data and has inherent technical limitations;</li>
+    <li>the randomness mechanism relies on a third-party verifiable randomness (VRF) service operated by MagicBlock, which may be delayed, unavailable, or subject to technical limitations;</li>
     <li>network congestion, downtime, forks, or RPC failures may delay or prevent transactions, including draws and claims;</li>
     <li>the legal and regulatory treatment of blockchain-based lotteries is uncertain and may change; and</li>
     <li>the Service, the interfaces, or the underlying protocol may become unavailable at any time.</li>

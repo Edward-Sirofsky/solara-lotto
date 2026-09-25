@@ -586,7 +586,7 @@
 
       <div class="trust-row">
         <span>On-chain draw</span><span class="trust-dot"></span>
-        <span>Commit-reveal randomness</span><span class="trust-dot"></span>
+        <span>MagicBlock VRF randomness</span><span class="trust-dot"></span>
         <span>Non-custodial</span>
       </div>
     </section>
@@ -1240,7 +1240,11 @@
       DISC.claim_prize  = await disc('claim_prize');
     }
 
-    const ROUND_STATUS = ['Pending','Open','Closed','Drawing','Claimable'];
+    // Index = the program's RoundStatus Borsh tag. AwaitingRandomness (5) is the window
+    // between close_round's VRF request and MagicBlock's callback storing the number.
+    const ROUND_STATUS = ['Pending','Open','Closed','Drawing','Claimable','AwaitingRandomness'];
+    const STATUS_LABEL = { AwaitingRandomness: 'Drawing…' };
+    const statusLabel = (s) => STATUS_LABEL[s] || s;
 
     function decodeLotteryState(data) {
       let o = 8;
@@ -1775,7 +1779,7 @@
       const statLabel = document.getElementById('myTicketsStatLabel');
       if (statLabel) statLabel.textContent = round ? `Your tickets · round #${round.roundId}` : 'Your tickets';
       document.getElementById('ticketPriceStat').innerHTML = round ? `${(Number(round.ticketPriceLamports)/1e9).toFixed(4)} <span class="unit">SOL</span>` : `— <span class="unit">SOL</span>`;
-      document.getElementById('roundStatusStat').textContent = round ? round.status : '—';
+      document.getElementById('roundStatusStat').textContent = round ? statusLabel(round.status) : '—';
     }
 
     function currentTicketPriceSOL() {
@@ -1792,6 +1796,8 @@
         label.textContent = `Round #${round.roundId} · Open`;
       } else if (round.status === 'Claimable') {
         label.textContent = `Round #${round.roundId} · Drawn`;
+      } else if (round.status === 'AwaitingRandomness') {
+        label.textContent = `Round #${round.roundId} · Drawing…`;
       } else {
         label.textContent = `Round #${round.roundId} · Drawing soon`;
       }
@@ -2063,7 +2069,9 @@
             ? `Round #${current.roundId} just drawn`
             : current.status === 'Open'
               ? `Round #${current.roundId} open · draws ${fmtDrawDate(current.endTime)}`
-              : `Round #${current.roundId} ${current.status.toLowerCase()} · draw in progress`)
+              : current.status === 'AwaitingRandomness'
+                ? `Round #${current.roundId} · Drawing…`
+                : `Round #${current.roundId} ${current.status.toLowerCase()} · draw in progress`)
         : '';
 
       if (!round) {
