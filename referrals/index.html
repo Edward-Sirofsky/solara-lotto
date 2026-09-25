@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Referral Leaderboard — SOLARA</title>
+<link rel="icon" href="../icons/icon-192.png">
 <meta name="description" content="SOLARA referral leaderboard — who is bringing new players to the on-chain lottery, and what they have earned.">
 <style>
   :root {
@@ -118,9 +119,9 @@
 <div class="wrap">
 
   <header>
-    <a class="brand" href="/">
-      <img class="coin" src="/assets/solara-coin.png" alt="SOLARA" />
-      <img class="wordmark" src="/assets/solara-wordmark-only.png" alt="SOLARA" />
+    <a class="brand" href="../">
+      <img class="coin" src="../assets/solara-coin.png" alt="SOLARA" />
+      <img class="wordmark" src="../assets/solara-wordmark-only.png" alt="SOLARA" />
     </a>
     <h1>Referral Leaderboard</h1>
     <p class="sub">Who is bringing new players to the draw.</p>
@@ -185,10 +186,10 @@
 
   <footer>
     SOLARA · On-chain lottery on Solana ·
-    <a href="/">Play</a> ·
-    <a href="/terms.html">Terms</a> ·
-    <a href="/privacy.html">Privacy</a> ·
-    <a href="/copyright.html">Copyright</a>
+    <a href="../">Play</a> ·
+    <a href="../terms.html">Terms</a> ·
+    <a href="../privacy.html">Privacy</a> ·
+    <a href="../copyright.html">Copyright</a>
   </footer>
 
 </div>
@@ -277,7 +278,10 @@
       img.className = 'pic';
       img.alt = '';
       img.loading = 'lazy';
-      if (r.picPath && PIC_PATH_RE.test(r.picPath)) img.src = r.picPath;
+      // Resolved relative to this page ('..' + '/assets/…') rather than the site root,
+      // so the same path also loads inside the Android app, which serves the site
+      // under /assets/ rather than at the root.
+      if (r.picPath && PIC_PATH_RE.test(r.picPath)) img.src = '..' + r.picPath;
       who.appendChild(img);
       var names = document.createElement('div');
       var nm = document.createElement('div');

@@ -482,7 +482,10 @@
     .wallet-option-tag { font:500 9px 'Space Grotesk',sans-serif; letter-spacing:.1em; color:var(--lilac); background:rgba(124,77,255,.15); padding:3px 8px; border-radius:99px; border:1px solid rgba(124,77,255,.3); white-space:nowrap; align-self:flex-start; }
     .nowallet-close { position:absolute; top:14px; right:16px; background:rgba(255,255,255,.06); border:none; color:var(--text-muted); font-size:16px; cursor:pointer; width:32px; height:32px; border-radius:99px; display:flex; align-items:center; justify-content:center; }
 
-    @media (max-width:900px) { nav.main-nav .nav-check { display:none; } }
+    /* Prizes is also a hero button and a footer link, so it is the one to drop when the
+       extra Partners link would otherwise push Connect Wallet off the header. */
+    @media (max-width:900px) { nav.main-nav .nav-check, nav.main-nav .nav-prizes { display:none; } }
+    @media (max-width:820px) { .header-right .net-badge { display:none; } nav.main-nav { gap:18px; } nav.main-nav a { white-space:nowrap; } }
     @media (max-width:640px) {
       nav.main-nav, .trust-row, .header-right .net-badge { display:none; }
       .mobile-menu-btn { display:flex; }
@@ -524,8 +527,9 @@
           <a href="#results">Results</a>
           <a href="#myResults" class="nav-check">Check if you won</a>
           <a href="#how">How it works</a>
-          <a href="#brackets">Prizes</a>
-          <a href="/referrals/">Referrals</a>
+          <a href="#brackets" class="nav-prizes">Prizes</a>
+          <a href="referrals/">Referrals</a>
+          <a href="partners.html">Partners</a>
         </nav>
         <div class="net-badge" id="netBadge"><span class="net-dot"></span><span id="netBadgeLabel">Devnet</span></div>
         <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileNav(event)"
@@ -549,7 +553,8 @@
       <a href="#myResults">Check if you won</a>
       <a href="#how">How it works</a>
       <a href="#brackets">Prizes</a>
-      <a href="/referrals/">Referrals</a>
+      <a href="referrals/">Referrals</a>
+      <a href="partners.html">Partners</a>
     </div>
   </header>
 
@@ -813,7 +818,7 @@
       </div>
       <div class="footer-col">
         <div class="flab">Product</div>
-        <div class="flinks"><a href="#play">Buy tickets</a><a href="#results">Results</a><a href="#myResults">Check if you won</a><a href="#brackets">Prize brackets</a><a href="/referrals/">Referral leaderboard</a><a href="#how">How it works</a></div>
+        <div class="flinks"><a href="#play">Buy tickets</a><a href="#results">Results</a><a href="#myResults">Check if you won</a><a href="#brackets">Prize brackets</a><a href="referrals/">Referral leaderboard</a><a href="#how">How it works</a><a href="partners.html">Partners</a></div>
       </div>
       <div class="footer-col">
         <div class="flab">Trust</div>
@@ -1010,10 +1015,9 @@
     // usually separate visits — people land on a link, go install a wallet or top up
     // SOL, and come back later.
     //
-    // Known limitation, accepted: none of this fires inside the installed Android app.
-    // That build loads appassets.androidplatform.net/assets/index.html, which carries no
-    // query string, so there is no ?ref= to capture and app purchases go unattributed.
-    // Supporting it needs a native deep-link change, deliberately out of scope here.
+    // Inside the Android app (v1.3.0+) this works the same way: solaralotto.io links
+    // open the app through Android App Links, and the app loads its bundled index.html
+    // with the link's ?ref= carried over, so the code below captures it unchanged.
     const REFERRAL_KEY = 'solara.ref';            // resolved wallet
     const REFERRAL_CODE_KEY = 'solara.ref.code';  // code still awaiting resolution
     // The code that produced the stored wallet, kept after resolution rather than
