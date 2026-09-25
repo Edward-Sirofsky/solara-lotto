@@ -21,7 +21,7 @@ const SHELL = [
   '/vendor/solana-web3.iife.min.js',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
-  '/assets/solara-coin.png',
+  '/assets/solara-coin.webp',
   '/assets/solara-wordmark-only.png',
   '/assets/solara-banner.jpg',
 ];
