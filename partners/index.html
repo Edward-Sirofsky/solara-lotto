@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="format-detection" content="email=no, telephone=no" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#07060F" />
 
@@ -252,8 +253,12 @@
     .enquire-options { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:34px auto 0; max-width:860px; }
     .enquire-options .btn { width:100%; white-space:normal; text-align:center; }
     .contact-row { display:flex; justify-content:center; flex-wrap:wrap; gap:14px 36px; margin:34px 0 0; }
-    .contact-row a { display:flex; flex-direction:column; align-items:center; gap:4px; color:#fff; font:500 16px 'Outfit',sans-serif; }
-    .contact-row a span { font:600 10.5px 'Space Grotesk',sans-serif; letter-spacing:.2em; text-transform:uppercase; color:var(--text-faint); }
+    .contact-row a, .contact-plain { display:flex; flex-direction:column; align-items:center; gap:4px; color:#fff; font:500 16px 'Outfit',sans-serif; }
+    .contact-row a span, .contact-plain span:first-child { font:600 10.5px 'Space Grotesk',sans-serif; letter-spacing:.2em; text-transform:uppercase; color:var(--text-faint); }
+    /* Plain text on purpose: selectable and copyable, not a link. Only the label is
+       excluded from the selection, so a copy picks up just the address. */
+    .contact-plain span:first-child { user-select:none; -webkit-user-select:none; }
+    .contact-plain .addr { user-select:text; -webkit-user-select:text; cursor:text; }
     .contact-row a:hover { color:var(--lilac); }
 
     /* ── FOOTER (same as the home page) ───────────────────── */
@@ -313,6 +318,91 @@
     .deck-nav:disabled { opacity:.3; cursor:default; }
     .deck-progress { width:140px; height:3px; border-radius:3px; background:rgba(255,255,255,.14); overflow:hidden; }
     .deck-progress i { display:block; height:100%; width:0; background:var(--grad-primary); border-radius:3px; transition:width .42s var(--ease); }
+
+    /* ── ENQUIRY FORM ─────────────────────────────────────────
+       Same glass as the deck. The panel scrolls on its own so the on-screen keyboard
+       never pushes the Send button out of reach. */
+    html.enq-open, html.enq-open body { overflow:hidden; }
+    .enq {
+      position:fixed; inset:0; z-index:110; display:flex; align-items:center; justify-content:center;
+      padding:max(16px, var(--safe-top)) 16px max(16px, var(--safe-bot));
+      background:rgba(7,6,15,.55);
+      backdrop-filter:blur(18px) saturate(140%); -webkit-backdrop-filter:blur(18px) saturate(140%);
+      opacity:0; visibility:hidden; transition:opacity .22s var(--ease), visibility 0s linear .22s;
+    }
+    @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) { .enq { background:rgba(7,6,15,.9); } }
+    .enq.open { opacity:1; visibility:visible; transition:opacity .28s var(--ease), visibility 0s; }
+    .enq-panel {
+      position:relative; width:min(540px, 100%); max-height:100%; overflow-y:auto; overscroll-behavior:contain;
+      padding:14px 22px 22px; border-radius:26px;
+      background:linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.05)), rgba(18,16,42,.72);
+      border:1px solid rgba(255,255,255,.16);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 40px 90px -30px rgba(0,0,0,.9), 0 0 80px -30px rgba(124,77,255,.55);
+      transform:translateY(12px) scale(.98); transition:transform .32s var(--ease);
+    }
+    .enq.open .enq-panel { transform:none; }
+    .enq .deck-bar { padding:2px 0 10px; }
+    .enq h3 { font:600 24px/1.2 'Outfit',sans-serif; letter-spacing:-.01em; margin:4px 0 6px; }
+    .enq-sub { color:var(--text-muted); font-size:14.5px; line-height:1.5; margin-bottom:18px; }
+    .enq-form { display:grid; gap:14px; }
+    .enq fieldset { border:0; padding:0; margin:0; min-width:0; }
+    /* The form's display:grid would otherwise beat the hidden attribute. */
+    .enq [hidden] { display:none !important; }
+    .enq-label { display:block; font:600 10.5px 'Space Grotesk',sans-serif; letter-spacing:.2em; text-transform:uppercase; color:var(--text-faint); margin-bottom:7px; }
+    .enq-label i { font-style:normal; letter-spacing:.06em; text-transform:none; color:var(--text-faint); opacity:.8; }
+    .enq-products { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; border:0; }
+    .enq-products input { position:absolute; opacity:0; pointer-events:none; }
+    .enq-products label {
+      display:flex; align-items:center; justify-content:center; text-align:center; min-height:44px; padding:8px 10px;
+      border-radius:var(--r-md); border:1px solid var(--line-strong); background:rgba(255,255,255,.04);
+      color:var(--text-muted); font:500 13.5px/1.25 'Outfit',sans-serif; cursor:pointer;
+      transition:border-color .2s, color .2s, background .2s;
+    }
+    .enq-products label:hover { color:#fff; border-color:rgba(255,255,255,.3); }
+    .enq-products input:checked + label { color:#fff; border-color:transparent; background:var(--grad-primary); box-shadow:inset 0 1px 0 rgba(255,255,255,.3); }
+    .enq-products input[value="Token Listing"]:checked + label { color:var(--gold-ink); background:var(--grad-gold); font-weight:600; }
+    .enq-products input:focus-visible + label { outline:2px solid var(--sky); outline-offset:2px; }
+    .enq-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .enq input.f, .enq textarea.f {
+      width:100%; padding:12px 14px; border-radius:var(--r-md); border:1px solid rgba(255,255,255,.14);
+      background:rgba(7,6,15,.45); color:#fff; font:400 15.5px/1.4 'Outfit',sans-serif;
+      transition:border-color .2s, box-shadow .2s;
+    }
+    .enq textarea.f { min-height:110px; resize:vertical; }
+    .enq .f::placeholder { color:rgba(237,233,255,.32); }
+    .enq .f:focus { outline:none; border-color:rgba(124,77,255,.8); box-shadow:0 0 0 3px rgba(124,77,255,.25); }
+    .enq .f[aria-invalid="true"] { border-color:rgba(255,120,120,.75); }
+    .enq-count { display:block; text-align:right; font:500 11px 'JetBrains Mono',monospace; color:var(--text-faint); margin-top:5px; }
+    .enq-hp { position:absolute !important; left:-9999px; width:1px; height:1px; overflow:hidden; }
+    .enq-error { min-height:1em; color:#FF9B9B; font-size:13.5px; line-height:1.4; }
+    .enq-error:empty { display:none; }
+    .enq-send { width:100%; margin-top:2px; }
+    .enq-send[disabled] { opacity:.6; cursor:progress; }
+    .enq-alt { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:6px 10px; font-size:13.5px; color:var(--text-faint); }
+    .enq-alt .addr { color:var(--text-muted); user-select:text; -webkit-user-select:text; }
+    .enq-copy {
+      border:1px solid var(--line-strong); background:rgba(255,255,255,.06); color:#fff; cursor:pointer;
+      border-radius:var(--r-pill); padding:5px 12px; font:500 12.5px 'Outfit',sans-serif; transition:background .2s;
+    }
+    .enq-copy:hover { background:rgba(255,255,255,.14); }
+    .enq-result { text-align:center; padding:18px 4px 6px; }
+    .enq-result .icon { width:56px; height:56px; margin:0 auto 14px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+    .enq-result .icon svg { width:26px; height:26px; }
+    .enq-result.ok .icon { background:rgba(94,230,168,.14); color:var(--green); border:1px solid rgba(94,230,168,.35); }
+    .enq-result.fail .icon { background:rgba(245,197,107,.12); color:var(--gold); border:1px solid rgba(245,197,107,.35); }
+    /* Focus moves to the heading so screen readers announce the result; no ring needed. */
+    .enq-result h3:focus { outline:none; }
+    .enq-result p { color:var(--text-muted); font-size:15px; line-height:1.5; margin:6px auto 18px; max-width:380px; }
+    .enq-result .enq-mail { display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; margin-bottom:18px; }
+    .enq-result .enq-mail .addr { font:500 17px 'Outfit',sans-serif; color:#fff; user-select:all; -webkit-user-select:all; }
+    @media (max-width:520px) {
+      .enq { align-items:flex-end; padding:max(12px, var(--safe-top)) 10px max(10px, var(--safe-bot)); }
+      .enq-panel { padding:12px 16px 18px; border-radius:22px; }
+      .enq-row { grid-template-columns:1fr; }
+      .enq-products label { font-size:12.5px; padding:8px 6px; }
+      .enq h3 { font-size:21px; }
+    }
+    @media (prefers-reduced-motion: reduce) { .enq, .enq-panel { transition:none !important; } }
 
     /* ── RESPONSIVE ───────────────────────────────────────── */
     @media (max-width:960px) {
@@ -448,7 +538,7 @@
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>Updates itself: jackpot, next draw, one-tap play.</li>
         </ul>
         <p class="best-for reveal d2"><strong>Best for:</strong> communities, wallets and creators with audiences who will actually play.</p>
-        <a class="btn btn-primary reveal d3" href="mailto:contact@solaralotto.io?subject=Partner%20enquiry%3A%20Affiliate%20Widget">Enquire about the widget</a>
+        <a class="btn btn-primary reveal d3" data-enquire="widget" href="mailto:contact@solaralotto.io?subject=Partner%20enquiry%3A%20Affiliate%20Widget">Enquire about the widget</a>
       </div>
       <div class="preview-wrap reveal d1" aria-hidden="true">
         <div class="preview">
@@ -485,7 +575,7 @@
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>One link. No dev work, no user data shared.</li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>Live analytics dashboard included.</li>
         </ul>
-        <div class="reveal d1"><a class="btn btn-primary" href="mailto:contact@solaralotto.io?subject=Partner%20enquiry%3A%20Spin-to-win%20Campaign">Enquire about a campaign</a></div>
+        <div class="reveal d1"><a class="btn btn-primary" data-enquire="campaign" href="mailto:contact@solaralotto.io?subject=Partner%20enquiry%3A%20Spin-to-win%20Campaign">Enquire about a campaign</a></div>
       </div>
     </section>
 
@@ -500,7 +590,7 @@
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Its own jackpot: a pool in your token that grows with every draw.</li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg>Noticed every week: in front of an active, playing audience.</li>
         </ul>
-        <a class="btn btn-gold reveal d3" href="mailto:contact@solaralotto.io?subject=Partner%20enquiry%3A%20Token%20Listing">Enquire about a listing</a>
+        <a class="btn btn-gold reveal d3" data-enquire="listing" href="mailto:contact@solaralotto.io?subject=Partner%20enquiry%3A%20Token%20Listing">Enquire about a listing</a>
       </div>
       <div class="preview-wrap reveal d1" aria-hidden="true">
         <div class="preview token">
@@ -525,12 +615,12 @@
       <h2 class="title reveal d1" id="enquireTitle">Let's get started</h2>
       <p class="lead reveal d2">Pick your option. We send your link. You're live this week.</p>
       <div class="enquire-options reveal d3">
-        <a class="btn btn-ghost" href="mailto:contact@solaralotto.io?subject=Partner%20enquiry%3A%20Affiliate%20Widget">Affiliate Widget</a>
-        <a class="btn btn-ghost" href="mailto:contact@solaralotto.io?subject=Partner%20enquiry%3A%20Spin-to-win%20Campaign">Spin-to-win Campaign</a>
-        <a class="btn btn-gold" href="mailto:contact@solaralotto.io?subject=Partner%20enquiry%3A%20Token%20Listing">Token Listing</a>
+        <a class="btn btn-ghost" data-enquire="widget" href="mailto:contact@solaralotto.io?subject=Partner%20enquiry%3A%20Affiliate%20Widget">Affiliate Widget</a>
+        <a class="btn btn-ghost" data-enquire="campaign" href="mailto:contact@solaralotto.io?subject=Partner%20enquiry%3A%20Spin-to-win%20Campaign">Spin-to-win Campaign</a>
+        <a class="btn btn-gold" data-enquire="listing" href="mailto:contact@solaralotto.io?subject=Partner%20enquiry%3A%20Token%20Listing">Token Listing</a>
       </div>
       <div class="contact-row reveal d3">
-        <a href="mailto:contact@solaralotto.io"><span>Email</span>contact@solaralotto.io</a>
+        <div class="contact-plain"><span>Email</span><span class="addr">contact@solaralotto.io</span></div>
         <a href="https://x.com/SolaraLottery" target="_blank" rel="noopener"><span>X</span>@SolaraLottery</a>
       </div>
     </section>
@@ -586,6 +676,81 @@
         <button class="deck-nav" id="deckNext" type="button" aria-label="Next slide">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Partner enquiry form. Opened by every Enquire button; sent through Web3Forms. -->
+  <div class="enq" id="enq" role="dialog" aria-modal="true" aria-labelledby="enqTitle" aria-hidden="true">
+    <div class="enq-panel">
+      <div class="deck-bar">
+        <span class="deck-title">Partner enquiry</span>
+        <button class="deck-close" id="enqClose" type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+
+      <form class="enq-form" id="enqForm" novalidate>
+        <div>
+          <h3 id="enqTitle">Let's get started</h3>
+          <p class="enq-sub">Tell us about your project and we'll send your link.</p>
+        </div>
+
+        <fieldset>
+          <legend class="enq-label">Product</legend>
+          <div class="enq-products">
+            <input type="radio" name="product" id="enqP1" value="Affiliate Widget" /><label for="enqP1">Affiliate Widget</label>
+            <input type="radio" name="product" id="enqP2" value="Spin-to-win Campaign" /><label for="enqP2">Spin-to-win Campaign</label>
+            <input type="radio" name="product" id="enqP3" value="Token Listing" /><label for="enqP3">Token Listing</label>
+          </div>
+        </fieldset>
+
+        <div class="enq-row">
+          <div>
+            <label class="enq-label" for="enqName">Your name</label>
+            <input class="f" id="enqName" name="name" type="text" maxlength="80" autocomplete="name" required />
+          </div>
+          <div>
+            <label class="enq-label" for="enqProject">Project name</label>
+            <input class="f" id="enqProject" name="project" type="text" maxlength="100" autocomplete="organization" required />
+          </div>
+        </div>
+
+        <div>
+          <label class="enq-label" for="enqContact">Contact <i>(email, Telegram or X)</i></label>
+          <input class="f" id="enqContact" name="contact" type="text" maxlength="120" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="you@project.xyz or @handle" required />
+        </div>
+
+        <div>
+          <label class="enq-label" for="enqSite">Project website or link <i>(optional)</i></label>
+          <input class="f" id="enqSite" name="website" type="text" inputmode="url" maxlength="200" autocomplete="url" autocapitalize="off" spellcheck="false" placeholder="https://" />
+        </div>
+
+        <div>
+          <label class="enq-label" for="enqMsg">Message</label>
+          <textarea class="f" id="enqMsg" name="message" maxlength="2000" rows="4" required placeholder="Your audience, what you have in mind, timing."></textarea>
+          <span class="enq-count" id="enqCount" aria-hidden="true">0 / 2000</span>
+        </div>
+
+        <!-- Web3Forms honeypot: people never see or tick it; bots that do are dropped. -->
+        <input class="enq-hp" type="checkbox" name="botcheck" id="enqBot" tabindex="-1" autocomplete="off" aria-hidden="true" />
+
+        <p class="enq-error" id="enqError" role="alert"></p>
+        <button class="btn btn-primary enq-send" id="enqSend" type="submit">Send enquiry</button>
+        <p class="enq-alt">or email us: <span class="addr">contact@solaralotto.io</span> <button class="enq-copy" type="button" data-copy>Copy</button></p>
+      </form>
+
+      <div class="enq-result ok" id="enqOk" hidden>
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></div>
+        <h3 tabindex="-1">Sent! We'll be in touch.</h3>
+        <p>Thanks for reaching out. We'll reply using the contact you gave us.</p>
+        <button class="btn btn-ghost" type="button" data-enq-close>Close</button>
+      </div>
+
+      <div class="enq-result fail" id="enqFail" hidden>
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8v5M12 16.5v.01"/><circle cx="12" cy="12" r="9"/></svg></div>
+        <h3 tabindex="-1">That didn't go through</h3>
+        <p>Please email us instead. Your message is still in the form if you want to try again.</p>
+        <div class="enq-mail"><span class="addr">contact@solaralotto.io</span> <button class="enq-copy" type="button" data-copy>Copy</button></div>
+        <button class="btn btn-ghost" type="button" id="enqRetry">Back to the form</button>
       </div>
     </div>
   </div>
@@ -754,6 +919,212 @@
     }
     stage.addEventListener('pointerup', endDrag);
     stage.addEventListener('pointercancel', endDrag);
+  })();
+  </script>
+  <script>
+  (function () {
+    // ── Partner enquiry form ──
+    // Every Enquire button keeps its mailto: href as the no-JavaScript fallback; with
+    // JavaScript it opens this form instead, product pre-selected. The form posts to
+    // Web3Forms, which emails contact@solaralotto.io. The access key is public by
+    // design: Web3Forms only ever delivers it to that one address.
+    var WEB3FORMS_URL = 'https://api.web3forms.com/submit';
+    var WEB3FORMS_KEY = '0e3c07fc-8690-4259-9c65-a92bcdb6c765';
+    var CONTACT = 'contact@solaralotto.io';
+    var PRODUCTS = { widget: 'Affiliate Widget', campaign: 'Spin-to-win Campaign', listing: 'Token Listing' };
+    var LIMITS = { name: 80, project: 100, contact: 120, website: 200, message: 2000 };
+    var EMAIL_RE = /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[A-Za-z]{2,}$/;
+
+    var modal = document.getElementById('enq');
+    var form = document.getElementById('enqForm');
+    var okView = document.getElementById('enqOk');
+    var failView = document.getElementById('enqFail');
+    var errorEl = document.getElementById('enqError');
+    var sendBtn = document.getElementById('enqSend');
+    var closeBtn = document.getElementById('enqClose');
+    var msg = document.getElementById('enqMsg');
+    var count = document.getElementById('enqCount');
+    var lastFocus = null, historyPushed = false, sending = false;
+
+    function field(name) { return form.elements[name]; }
+    function clean(v, max) { return String(v || '').replace(/\s+$/g, '').replace(/^\s+/g, '').slice(0, max); }
+    // For the one-line values that go into the subject: no line breaks, single spaces.
+    function oneLine(v, max) { return clean(String(v || '').replace(/[\r\n\t]+/g, ' ').replace(/ {2,}/g, ' '), max); }
+
+    function show(view) {
+      form.hidden = view !== 'form';
+      okView.hidden = view !== 'ok';
+      failView.hidden = view !== 'fail';
+      modal.querySelector('.enq-panel').scrollTop = 0;
+      var target = view === 'form' ? form.querySelector('input[name="product"]:checked') || field('name')
+                                   : (view === 'ok' ? okView : failView).querySelector('h3');
+      if (target) target.focus({ preventScroll: true });
+    }
+
+    function open(product) {
+      lastFocus = document.activeElement;
+      // A finished enquiry starts clean; one that failed keeps what was typed.
+      if (!okView.hidden) form.reset();
+      var radio = product && form.querySelector('input[name="product"][value="' + product + '"]');
+      if (radio) radio.checked = true;
+      errorEl.textContent = '';
+      form.querySelectorAll('[aria-invalid]').forEach(function (el) { el.removeAttribute('aria-invalid'); });
+      updateCount();
+      document.documentElement.classList.add('enq-open');
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      modal.querySelector('.enq-panel').scrollTop = 0;
+      show('form');
+      // Same Back-button handling as the deck: Back closes the form, not the page.
+      try { history.pushState({ solaraEnquiry: true }, ''); historyPushed = true; } catch (e) { historyPushed = false; }
+    }
+    function hide() {
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      document.documentElement.classList.remove('enq-open');
+      if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
+    }
+    function close() {
+      if (!modal.classList.contains('open')) return;
+      hide();
+      if (historyPushed) { historyPushed = false; history.back(); }
+    }
+    window.addEventListener('popstate', function () {
+      if (!modal.classList.contains('open')) return;
+      historyPushed = false;
+      hide();
+    });
+
+    document.querySelectorAll('[data-enquire]').forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        open(PRODUCTS[a.getAttribute('data-enquire')]);
+      });
+    });
+    closeBtn.addEventListener('click', close);
+    modal.querySelectorAll('[data-enq-close]').forEach(function (b) { b.addEventListener('click', close); });
+    document.getElementById('enqRetry').addEventListener('click', function () { show('form'); });
+    // Tapping the dimmed backdrop closes the form, but never mid-send.
+    modal.addEventListener('click', function (e) { if (e.target === modal && !sending) close(); });
+
+    document.addEventListener('keydown', function (e) {
+      if (!modal.classList.contains('open')) return;
+      if (e.key === 'Escape') { e.preventDefault(); if (!sending) close(); }
+      else if (e.key === 'Tab') {
+        var f = Array.prototype.filter.call(
+          modal.querySelectorAll('button, input:not(.enq-hp), textarea, [tabindex="-1"]:not(.enq-hp)'),
+          function (el) { return !el.disabled && el.offsetParent !== null && el.tabIndex >= 0; });
+        if (!f.length) return;
+        var first = f[0], last = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    });
+
+    function updateCount() { count.textContent = msg.value.length + ' / ' + LIMITS.message; }
+    msg.addEventListener('input', updateCount);
+    form.addEventListener('input', function (e) { if (e.target.removeAttribute) e.target.removeAttribute('aria-invalid'); });
+
+    // ── Copy the address. Clipboard API first; older WebViews fall back to a hidden
+    // textarea. If both fail the address is still on screen and selectable.
+    function copyText(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        return navigator.clipboard.writeText(text).catch(function () { return legacyCopy(text); });
+      }
+      return legacyCopy(text);
+    }
+    function legacyCopy(text) {
+      return new Promise(function (resolve, reject) {
+        var ta = document.createElement('textarea');
+        ta.value = text; ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        var ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        document.body.removeChild(ta);
+        ok ? resolve() : reject();
+      });
+    }
+    modal.querySelectorAll('[data-copy]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        copyText(CONTACT).then(function () { b.textContent = 'Copied'; },
+                               function () { b.textContent = 'Select to copy'; });
+        setTimeout(function () { b.textContent = 'Copy'; }, 2200);
+      });
+    });
+
+    // ── Validate and send ──
+    function invalid(el, text) {
+      el.setAttribute('aria-invalid', 'true');
+      errorEl.textContent = text;
+      el.focus();
+      return false;
+    }
+    function validate(v) {
+      if (!v.product) { errorEl.textContent = 'Choose a product.'; form.querySelector('input[name="product"]').focus(); return false; }
+      if (!v.name) return invalid(field('name'), 'Add your name.');
+      if (!v.project) return invalid(field('project'), 'Add your project name.');
+      if (v.contact.length < 3) return invalid(field('contact'), 'Add an email, Telegram or X handle so we can reply.');
+      if (v.message.length < 10) return invalid(field('message'), 'Add a short message (at least 10 characters).');
+      return true;
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (sending) return;
+      errorEl.textContent = '';
+      var checked = form.querySelector('input[name="product"]:checked');
+      var v = {
+        product: checked ? checked.value : '',
+        name: oneLine(field('name').value, LIMITS.name),
+        project: oneLine(field('project').value, LIMITS.project),
+        contact: oneLine(field('contact').value, LIMITS.contact),
+        website: oneLine(field('website').value, LIMITS.website),
+        message: clean(msg.value, LIMITS.message),
+      };
+      if (!validate(v)) return;
+
+      // Honeypot ticked: only a bot does that. Look successful, send nothing.
+      if (document.getElementById('enqBot').checked) { show('ok'); return; }
+
+      var payload = {
+        access_key: WEB3FORMS_KEY,
+        subject: 'Partner enquiry: ' + v.product + ' — ' + v.project,
+        from_name: 'SOLARA Partners page',
+        botcheck: false,
+        'Product': v.product,
+        'Name': v.name,
+        'Project': v.project,
+        'Contact': v.contact,
+        'Website': v.website || '(none given)',
+        'Message': v.message,
+        'Sent from': location.href.split('#')[0],
+      };
+      if (EMAIL_RE.test(v.contact)) payload.replyto = v.contact;
+
+      sending = true;
+      sendBtn.disabled = true;
+      sendBtn.textContent = 'Sending…';
+      var ctrl = 'AbortController' in window ? new AbortController() : null;
+      var timer = ctrl && setTimeout(function () { ctrl.abort(); }, 15000);
+
+      fetch(WEB3FORMS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: ctrl ? ctrl.signal : undefined,
+      })
+        .then(function (res) { return res.json().catch(function () { return {}; }).then(function (j) { return res.ok && j && j.success === true; }); })
+        .catch(function () { return false; })
+        .then(function (ok) {
+          if (timer) clearTimeout(timer);
+          sending = false;
+          sendBtn.disabled = false;
+          sendBtn.textContent = 'Send enquiry';
+          if (ok) { form.reset(); updateCount(); }
+          show(ok ? 'ok' : 'fail');
+        });
+    });
   })();
   </script>
 </body>
