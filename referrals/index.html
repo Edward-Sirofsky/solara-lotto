@@ -102,6 +102,28 @@
   .empty { padding: 44px 20px; text-align: center; color: var(--muted); font-size: 15px; }
   .empty .big { display: block; color: var(--text); font-size: 17px; margin-bottom: 8px; font-weight: 600; }
 
+  /* ── Live: this week so far (tickets only, provisional) ── */
+  .live { margin-bottom: 26px; }
+  .live-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .live-head h2 { font-size: 18px; margin: 0; color: #fff; }
+  .live-pill {
+    display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px; border-radius: 99px;
+    font-size: 12px; font-weight: 600; letter-spacing: .02em;
+    color: #5ee6a8; background: rgba(94,230,168,.1); border: 1px solid rgba(94,230,168,.35);
+  }
+  .live-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: #5ee6a8; box-shadow: 0 0 8px rgba(94,230,168,.9); animation: livePulse 2s ease-in-out infinite; }
+  .live-pill.stale { color: var(--faint); background: var(--panel); border-color: var(--border); }
+  .live-pill.stale .dot { background: var(--faint); box-shadow: none; animation: none; }
+  @keyframes livePulse { 0%,100% { opacity: 1 } 50% { opacity: .3 } }
+  @media (prefers-reduced-motion: reduce) { .live-pill .dot { animation: none; } }
+  .live-note { color: var(--muted); font-size: 13.5px; margin: 0 0 12px; }
+  .live .board table { min-width: 0; }
+  .live .who { min-width: 0; }
+  .live .nm, .live .cd { overflow-wrap: anywhere; }
+  @media (max-width: 480px) { .live th, .live td { padding-left: 12px; padding-right: 12px; } }
+  .live-prev { margin-top: 12px; color: var(--muted); font-size: 13.5px; }
+  .live-prev strong { color: var(--text); }
+
   .join {
     margin-top: 26px; background: var(--panel); border: 1px solid var(--border);
     border-radius: 14px; padding: 18px 22px; font-size: 14.5px; color: var(--muted);
@@ -130,6 +152,31 @@
 
   <div class="banner" id="banner"></div>
 
+  <section class="live" id="live" hidden aria-labelledby="liveTitle">
+    <div class="live-head">
+      <h2 id="liveTitle">This week so far</h2>
+      <span class="live-pill" id="livePill"><span class="dot"></span><span id="liveLabel">Live</span></span>
+    </div>
+    <p class="live-note">Referred tickets since Thursday's draw, updated every few minutes.
+      Provisional until the week closes. Referral rewards are paid weekly, after review.</p>
+    <div class="board">
+      <div class="scroller">
+        <table id="liveTable" hidden>
+          <thead>
+            <tr>
+              <th class="num">#</th>
+              <th>Referrer</th>
+              <th class="num">Tickets</th>
+            </tr>
+          </thead>
+          <tbody id="liveRows"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="liveEmpty" hidden></div>
+    </div>
+    <p class="live-prev" id="livePrev" hidden></p>
+  </section>
+
   <div class="intro">
     <h2>How referral rewards work</h2>
     <p>
@@ -148,8 +195,8 @@
     </p>
     <p>
       The table below is <strong>all-time</strong>. Every week that settles is added to a
-      referrer's running totals, so these numbers only ever climb. The week in progress is
-      not counted until it settles at the Thursday draw.
+      referrer's running totals, so these numbers only ever climb. The week in progress
+      shows above as it happens, and is added here once it settles at the Thursday draw.
     </p>
   </div>
 
@@ -348,6 +395,130 @@
   function isDemo() {
     try { return new URLSearchParams(window.location.search).get('demo') === '1'; }
     catch (e) { return false; }
+  }
+
+  // ── Live: this week so far ──
+  // A provisional snapshot pushed every few minutes by the payout engine running
+  // read-only on the server. Ticket counts only: no amounts are served or shown.
+  // Any failure simply hides the section; the all-time table below is unaffected.
+  var LIVE_STALE_MS = 30 * 60 * 1000;
+  var liveGeneratedAt = null;
+
+  function whoCell(r) {
+    var td = document.createElement('td');
+    var who = document.createElement('div');
+    who.className = 'who';
+    var img = document.createElement('img');
+    img.className = 'pic';
+    img.alt = '';
+    img.loading = 'lazy';
+    if (r.picPath && PIC_PATH_RE.test(r.picPath)) img.src = '..' + r.picPath;
+    who.appendChild(img);
+    var names = document.createElement('div');
+    var nm = document.createElement('div');
+    nm.className = 'nm';
+    nm.textContent = r.name;
+    var cd = document.createElement('div');
+    cd.className = 'cd';
+    cd.textContent = r.code ? '@' + r.code : shortKey(r.pubkey);
+    names.appendChild(nm);
+    names.appendChild(cd);
+    who.appendChild(names);
+    td.appendChild(who);
+    return td;
+  }
+
+  function minutesAgo(iso) {
+    var ms = Date.now() - new Date(iso).getTime();
+    if (!(ms >= 0)) return 'just now';
+    var m = Math.floor(ms / 60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return m + ' min ago';
+    var h = Math.floor(m / 60);
+    return h + (h === 1 ? ' hour ago' : ' hours ago');
+  }
+
+  function updateLiveLabel() {
+    if (!liveGeneratedAt) return;
+    var stale = Date.now() - new Date(liveGeneratedAt).getTime() > LIVE_STALE_MS;
+    $('livePill').className = 'live-pill' + (stale ? ' stale' : '');
+    $('liveLabel').textContent = stale
+      ? 'Updates paused · last ' + minutesAgo(liveGeneratedAt)
+      : 'Live · updated ' + minutesAgo(liveGeneratedAt);
+  }
+
+  function renderLive(data) {
+    if (!data || !data.current || !data.generatedAt) { $('live').hidden = true; return; }
+    liveGeneratedAt = data.generatedAt;
+    var rows = data.current.rows || [];
+    var tbody = $('liveRows');
+    tbody.textContent = '';
+    rows.forEach(function (r) {
+      var tr = document.createElement('tr');
+      var tdRank = document.createElement('td');
+      tdRank.className = 'num rank' + (r.rank <= 3 ? ' top' : '');
+      tdRank.textContent = r.rank;
+      var tdT = document.createElement('td');
+      tdT.className = 'num';
+      tdT.textContent = (r.tickets || 0).toLocaleString();
+      tr.appendChild(tdRank);
+      tr.appendChild(whoCell(r));
+      tr.appendChild(tdT);
+      tbody.appendChild(tr);
+    });
+    $('liveTable').hidden = rows.length === 0;
+    $('liveEmpty').hidden = rows.length !== 0;
+    $('liveEmpty').textContent = rows.length ? '' : 'No referred tickets yet this week.';
+
+    var prev = data.previous;
+    var prevRows = (prev && prev.rows) || [];
+    if (prevRows.length) {
+      $('livePrev').textContent = '';
+      var lead = document.createElement('strong');
+      lead.textContent = 'Last week, awaiting payout review: ';
+      $('livePrev').appendChild(lead);
+      $('livePrev').appendChild(document.createTextNode(
+        prevRows.map(function (r) { return r.name + ' ' + r.tickets + (r.tickets === 1 ? ' ticket' : ' tickets'); }).join(' · ')));
+      $('livePrev').hidden = false;
+    } else {
+      $('livePrev').hidden = true;
+    }
+    updateLiveLabel();
+    $('live').hidden = false;
+  }
+
+  async function loadLive() {
+    try {
+      var res = await fetch(API + '/api/live', { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      renderLive(await res.json());
+    } catch (e) {
+      // Keep showing the last good snapshot (it greys out once stale); hide only if
+      // nothing has ever loaded.
+      if (!liveGeneratedAt) $('live').hidden = true;
+    }
+  }
+
+  function demoLive() {
+    var now = Date.now();
+    return {
+      generatedAt: new Date(now - 3 * 60000).toISOString(),
+      current: { rows: [
+        { rank: 1, name: 'Moonshot Mike', code: 'moonshot', picPath: '', tickets: 14 },
+        { rank: 2, name: 'Lucky Seven', code: 'lucky7', picPath: '', tickets: 6 },
+      ] },
+      previous: { rows: [{ name: 'Moonshot Mike', tickets: 40 }] },
+    };
+  }
+
+  if (isDemo()) {
+    renderLive(demoLive());
+  } else {
+    loadLive();
+    // Refresh while the page is open and visible; the label ticks between refreshes.
+    setInterval(function () { if (!document.hidden) loadLive(); }, 60000);
+    setInterval(updateLiveLabel, 30000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) loadLive(); });
   }
 
   (async function load() {
